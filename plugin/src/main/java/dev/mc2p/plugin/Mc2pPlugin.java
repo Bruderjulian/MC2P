@@ -48,7 +48,6 @@ public final class Mc2pPlugin extends JavaPlugin {
     private McpHttpServer httpServer;
     private McpSyncServer mcpServer;
     private BackendRpcServer rpcServer;
-    private PlayerTracker playerTracker;
     private String mode;
 
     @Override

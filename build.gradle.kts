@@ -24,6 +24,7 @@ subprojects {
     tasks.withType<JavaCompile>().configureEach {
         options.release.set(17)
         options.encoding = "UTF-8"
+        options.compilerArgs.add("-Xlint:deprecation")
     }
 
     configure<com.diffplug.gradle.spotless.SpotlessExtension> {

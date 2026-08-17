@@ -13,18 +13,24 @@ import dev.mc2p.plugin.facade.model.Model.Status;
 import dev.mc2p.plugin.facade.model.Model.Tps;
 import dev.mc2p.plugin.facade.model.Model.WorldInfo;
 import dev.mc2p.plugin.thread.MainThread;
+import io.papermc.paper.ban.BanListType;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Statistic;
 import org.bukkit.World;
+import org.bukkit.ban.ProfileBanList;
 import org.bukkit.block.Block;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Entity;
@@ -361,7 +367,7 @@ public final class PaperServerFacade implements ServerFacade {
             if (p == null) {
                 throw new FacadeException("player not online: " + uuid);
             }
-            p.kickPlayer(reason == null || reason.isBlank() ? null : stripFormatting(reason));
+            p.kick(reason == null || reason.isBlank() ? null : Component.text(stripFormatting(reason)));
             return null;
         });
     }
@@ -406,7 +412,7 @@ public final class PaperServerFacade implements ServerFacade {
             if (p == null) {
                 throw new FacadeException("player not online: " + uuid);
             }
-            PotionEffectType type = PotionEffectType.getByKey(org.bukkit.NamespacedKey.minecraft(effect));
+            PotionEffectType type = org.bukkit.Registry.EFFECT.get(org.bukkit.NamespacedKey.minecraft(effect));
             if (type == null) {
                 throw new FacadeException("unknown effect: " + effect);
             }
@@ -419,12 +425,11 @@ public final class PaperServerFacade implements ServerFacade {
     public void ban(UUID uuid, String reason) {
         mainThread.call(() -> {
             OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
-            String name = op.getName();
-            Bukkit.getBanList(org.bukkit.BanList.Type.NAME)
-                    .addBan(name == null ? uuid.toString() : name, reason, null, "mc2p");
+            ProfileBanList bans = Bukkit.getBanList(BanListType.PROFILE);
+            bans.addBan(op.getPlayerProfile(), reason, (Instant) null, "mc2p");
             Player online = Bukkit.getPlayer(uuid);
             if (online != null) {
-                online.kickPlayer(reason == null || reason.isBlank() ? "Banned" : stripFormatting(reason));
+                online.kick(reason == null || reason.isBlank() ? null : Component.text(stripFormatting(reason)));
             }
             return null;
         });
@@ -434,8 +439,8 @@ public final class PaperServerFacade implements ServerFacade {
     public void unban(UUID uuid) {
         mainThread.call(() -> {
             OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
-            String name = op.getName();
-            Bukkit.getBanList(org.bukkit.BanList.Type.NAME).pardon(name == null ? uuid.toString() : name);
+            ProfileBanList bans = Bukkit.getBanList(BanListType.PROFILE);
+            bans.pardon(op.getPlayerProfile());
             return null;
         });
     }
@@ -516,7 +521,7 @@ public final class PaperServerFacade implements ServerFacade {
         String message = (restart ? "Server restarting" : "Server stopping") + " in "
                 + countdownSeconds + " second" + (countdownSeconds == 1 ? "" : "s")
                 + (announce == null || announce.isBlank() ? "" : " - " + announce);
-        Bukkit.broadcastMessage(stripFormatting(message));
+        Bukkit.broadcast(Component.text(stripFormatting(message)));
         for (int i = countdownSeconds; i > 0; i--) {
             int remaining = i;
             Bukkit.getScheduler()
@@ -524,8 +529,8 @@ public final class PaperServerFacade implements ServerFacade {
                             plugin,
                             () -> {
                                 if (remaining <= 5 || remaining % 10 == 0) {
-                                    Bukkit.broadcastMessage(stripFormatting("Server "
-                                            + (restart ? "restarting" : "stopping") + " in " + remaining + "s"));
+                                    Bukkit.broadcast(Component.text(stripFormatting("Server "
+                                            + (restart ? "restarting" : "stopping") + " in " + remaining + "s")));
                                 }
                             },
                             (countdownSeconds - i) * 20L + 1);
@@ -548,7 +553,7 @@ public final class PaperServerFacade implements ServerFacade {
     }
 
     private boolean trySpigotRestart() throws Throwable {
-        Bukkit.spigot().restart();
+        Bukkit.restart();
         return true;
     }
 
@@ -610,9 +615,12 @@ public final class PaperServerFacade implements ServerFacade {
                 return p.getName();
             }
             if (e instanceof LivingEntity le) {
-                String custom = le.getCustomName();
-                if (custom != null && !custom.isBlank()) {
-                    return org.bukkit.ChatColor.stripColor(custom);
+                Component custom = le.customName();
+                if (custom != null) {
+                    String name = PlainTextComponentSerializer.plainText().serialize(custom);
+                    if (!name.isBlank()) {
+                        return name;
+                    }
                 }
             }
         } catch (Throwable ignored) {
@@ -625,8 +633,9 @@ public final class PaperServerFacade implements ServerFacade {
         if (text == null) {
             return null;
         }
-        String noSection = org.bukkit.ChatColor.stripColor(text);
-        return noSection.replaceAll("&[0-9a-fk-orA-FK-OR]", "");
+        String plain = PlainTextComponentSerializer.plainText()
+                .serialize(LegacyComponentSerializer.legacySection().deserialize(text));
+        return plain.replaceAll("&[0-9a-fk-orA-FK-OR]", "");
     }
 
     private static BlockInfo blockInfoOf(World w, Block b, int x, int y, int z) {
@@ -654,21 +663,7 @@ public final class PaperServerFacade implements ServerFacade {
                 sky,
                 w.isChunkLoaded(x >> 4, z >> 4));
     }
-
-    private static String safeBiomeName(org.bukkit.ChunkSnapshot snapshot, int x, int y, int z, World w) {
-        try {
-            return snapshot.getBiome(x, y, z).getKey().getKey();
-        } catch (Throwable t) {
-            try {
-                return w.getBiome(snapshot.getX() * 16 + x, y, snapshot.getZ() * 16 + z)
-                        .getKey()
-                        .getKey();
-            } catch (Throwable t2) {
-                return "unknown";
-            }
-        }
-    }
-
+    
     /** Off-thread-safe biome name from a snapshot only (snapshots carry biomes when captured with includeBiome). */
     private static String snapshotBiomeName(org.bukkit.ChunkSnapshot snapshot, int x, int y, int z) {
         try {
@@ -705,28 +700,28 @@ public final class PaperServerFacade implements ServerFacade {
         @Override
         public void sendMessage(String message) {
             delegate.sendMessage(message);
-            record(org.bukkit.ChatColor.stripColor(message));
+            record(stripFormatting(message));
         }
 
         @Override
         public void sendMessage(String... messages) {
             delegate.sendMessage(messages);
             for (String message : messages) {
-                record(org.bukkit.ChatColor.stripColor(message));
+                record(stripFormatting(message));
             }
         }
 
         @Override
         public void sendMessage(java.util.UUID uuid, String message) {
-            delegate.sendMessage(uuid, message);
-            record(org.bukkit.ChatColor.stripColor(message));
+            delegate.sendMessage(message);
+            record(stripFormatting(message));
         }
 
         @Override
         public void sendMessage(java.util.UUID uuid, String... messages) {
-            delegate.sendMessage(uuid, messages);
+            delegate.sendMessage(messages);
             for (String message : messages) {
-                record(org.bukkit.ChatColor.stripColor(message));
+                record(stripFormatting(message));
             }
         }
 
@@ -737,7 +732,7 @@ public final class PaperServerFacade implements ServerFacade {
 
         @Override
         public void sendRawMessage(java.util.UUID uuid, String message) {
-            delegate.sendRawMessage(uuid, message);
+            delegate.sendRawMessage(message);
         }
 
         @Override

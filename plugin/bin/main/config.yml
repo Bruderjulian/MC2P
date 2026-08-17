@@ -1,0 +1,97 @@
+# MC2P backend plugin configuration.
+#
+# Modes:
+#   auto        - standalone unless this server is configured as a proxy backend
+#                 (spigot.yml settings.bungeecord=true or MC2P_PROXY_SECRET set)
+#   standalone  - serve the MCP endpoint on a single TLS port (default)
+#   backend     - no port; serve the proxy over the mc2p:rpc plugin channel
+
+mode: auto
+
+# Stable id used to identify this server in audit entries and in the proxy's fleet.
+serverId: main-01
+
+mcp:
+  # The proxy/proxy-IP is the "known host"; with tls.mode=selfsigned agents must trust the
+  # generated CA (see /mc2p and docs/SECURITY.md).
+  bind: 0.0.0.0
+  port: 8443
+  endpoint: /mcp
+  # Maximum accepted HTTP body size (bytes). Prevents oversized requests.
+  body-limit-bytes: 65536
+  tls:
+    # selfsigned (default, generates a PKCS12 keystore on first run)
+    # keystore (bring your own keystore; set MC2P_KEYSTORE_PW)
+    # none-behind-proxy (host panel terminates TLS in front of this port)
+    # none (PLAINTEXT - only for local testing)
+    mode: selfsigned
+    keystore: keystore.p12
+    password-env: MC2P_KEYSTORE_PW
+
+proxy:
+  # Env var holding the shared secret used by the proxy's RPC handshake (backend mode).
+  secret-env: MC2P_PROXY_SECRET
+  # Plugin message channel for proxy<->backend RPC (backend mode).
+  rpc-channel: mc2p:rpc
+  # Maximum wait for a backend round trip (ms).
+  timeout-ms: 5000
+
+auth:
+  # One token source per role: env:VAR | file:path | plaintext (warned).
+  # Run /mc2p setup once to auto-generate missing tokens and print the agent client config.
+  tokens:
+    reader: env:MC2P_TOKEN_READER
+    ops: env:MC2P_TOKEN_OPS
+    admin: env:MC2P_TOKEN_ADMIN
+  # Optional: only allow these CIDR blocks to reach the MCP endpoint (empty = allow all).
+  ip-allowlist: []
+  rate-limit:
+    tokens-per-second: 5
+    burst: 20
+
+commands:
+  # command_execute allowlists (see docs/SECURITY.md). "prefix*" is a prefix match.
+  ops-allowlist:
+    - gamemode
+    - tp
+    - teleport
+    - weather
+    - time
+    - effect
+    - clear
+  admin-allowlist:
+    - "*"
+  # Always denied, regardless of allowlist (deny precedence).
+  deny:
+    - stop
+    - restart
+    - save-off
+    - save-all
+    - kick-all
+    - op
+
+limits:
+  # Coordinate clamp for block/entity tools (world border default).
+  max-coordinate: 30000000
+  # Maximum blocks returned by region_get.
+  max-region-blocks: 10000
+  # Maximum entities returned by entity_list.
+  max-entity-limit: 100
+  # Maximum command string length for command_execute.
+  max-command-length: 512
+
+restart:
+  # auto | spigot-restart | host-restart | disabled
+  strategy: auto
+
+features:
+  # Allow block_set (extra destructive power, requires admin + confirm).
+  blockEdit: false
+  # Allow player_stats.
+  stats: true
+
+audit:
+  # JSON-lines audit log, append-only, fail-closed for destructive actions.
+  file: logs/mcp-audit.log
+  max-mb: 50
+  max-files: 5
