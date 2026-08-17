@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/Bruderjulian/MC2P/security/advisories
+    about: Please report security issues privately via GitHub Security Advisory — do not open a public issue.
+  - name: Documentation
+    url: https://github.com/Bruderjulian/MC2P/blob/main/docs/SECURITY.md
+    about: Read docs/SECURITY.md and docs/MULTI-SERVER.md before opening an issue about deployment or configuration.
