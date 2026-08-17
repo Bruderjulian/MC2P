@@ -110,7 +110,6 @@ public final class RpcMessage {
     }
 
     /** Minimal JSON parse of a {@code resp} message back into a map (single-message path). */
-    @SuppressWarnings("unchecked")
     public static Map<String, Object> responseFromJson(byte[] json) {
         return dev.mc2p.common.json.Json.parse(json);
     }

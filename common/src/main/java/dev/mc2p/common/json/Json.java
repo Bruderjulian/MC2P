@@ -31,7 +31,6 @@ public final class Json {
         }
     }
 
-    @SuppressWarnings("unchecked")
     public static Map<String, Object> parse(String json) {
         if (json == null || json.isBlank()) {
             return Map.of();
