@@ -4,7 +4,9 @@ import dev.mc2p.common.role.Role;
 import dev.mc2p.common.util.Tokens;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -25,7 +27,7 @@ public final class TokenManager {
 
     public record AuthResult(String name, Role role, String tokenId) {}
 
-    public record TokenInfo(String name, Role role, String tokenId, boolean configured) {}
+    public record TokenInfo(String name, Role role, String tokenId, boolean configured, boolean disabled) {}
 
     /** A configured token before its secret is resolved: name, role, and secret source. */
     public record ConfigToken(Role role, String secret) {}
@@ -34,6 +36,7 @@ public final class TokenManager {
     private final Map<String, Entry> entries = new LinkedHashMap<>();
     private final Map<String, Entry> configuredEntries = new LinkedHashMap<>();
     private final Map<String, Entry> runtimeEntries = new LinkedHashMap<>();
+    private final Set<String> disabledNames = new LinkedHashSet<>();
 
     private static final class Entry {
         final String name;
@@ -68,7 +71,6 @@ public final class TokenManager {
      * tokens (which take precedence per name).
      */
     public void updateFromConfig(Map<String, ConfigToken> configured) {
-        entries.clear();
         configuredEntries.clear();
         if (configured != null) {
             for (Map.Entry<String, ConfigToken> e : configured.entrySet()) {
@@ -84,13 +86,10 @@ public final class TokenManager {
                 }
                 Entry entry = new Entry(name, ct.role(), Tokens.sha256(ct.secret()));
                 configuredEntries.put(name, entry);
-                entries.put(name, entry);
             }
         }
         loadRuntime();
-        for (Map.Entry<String, Entry> e : runtimeEntries.entrySet()) {
-            entries.put(e.getKey(), e.getValue());
-        }
+        rebuild();
     }
 
     /**
@@ -123,6 +122,7 @@ public final class TokenManager {
         String token = Tokens.generateToken();
         Entry entry = new Entry(name, role, Tokens.sha256(token));
         runtimeEntries.put(name, entry);
+        disabledNames.remove(name);
         entries.put(name, entry);
         persistRuntime();
         return token;
@@ -136,13 +136,33 @@ public final class TokenManager {
         Entry removed = runtimeEntries.remove(name);
         if (removed != null) {
             persistRuntime();
-            if (configuredEntries.containsKey(name)) {
-                entries.put(name, configuredEntries.get(name));
-            } else {
-                entries.remove(name);
-            }
+            rebuild();
         }
         return removed != null;
+    }
+
+    /**
+     * Disables the active token with the given name (configured or runtime). Disabled
+     * tokens can no longer authenticate but keep their entry and status.
+     */
+    public boolean disable(String name) {
+        if (!entries.containsKey(name)) {
+            return false;
+        }
+        disabledNames.add(name);
+        rebuild();
+        persistRuntime();
+        return true;
+    }
+
+    /** Re-enables a previously disabled token by name. */
+    public boolean enable(String name) {
+        if (!disabledNames.remove(name)) {
+            return false;
+        }
+        rebuild();
+        persistRuntime();
+        return true;
     }
 
     /** True if any active token carries the given role. */
@@ -158,11 +178,29 @@ public final class TokenManager {
     /** Returns a snapshot of the currently active tokens keyed by name (for status/audit). */
     public Map<String, TokenInfo> snapshot() {
         Map<String, TokenInfo> result = new LinkedHashMap<>();
-        for (Map.Entry<String, Entry> e : entries.entrySet()) {
-            boolean runtime = runtimeEntries.containsKey(e.getKey());
-            result.put(e.getKey(), new TokenInfo(e.getValue().name, e.getValue().role, e.getValue().tokenId, !runtime));
+        for (Entry e : configuredEntries.values()) {
+            result.put(e.name, new TokenInfo(e.name, e.role, e.tokenId, true, disabledNames.contains(e.name)));
+        }
+        for (Entry e : runtimeEntries.values()) {
+            result.put(e.name, new TokenInfo(e.name, e.role, e.tokenId, false, disabledNames.contains(e.name)));
         }
         return result;
+    }
+
+    /** Recomputes the active {@code entries} from the source maps, skipping disabled names. */
+    private void rebuild() {
+        entries.clear();
+        for (Entry e : configuredEntries.values()) {
+            if (!disabledNames.contains(e.name)) {
+                entries.put(e.name, e);
+            }
+        }
+        for (Entry e : runtimeEntries.values()) {
+            if (!disabledNames.contains(e.name)) {
+                entries.put(e.name, e);
+            }
+        }
+        disabledNames.removeIf(n -> !configuredEntries.containsKey(n) && !runtimeEntries.containsKey(n));
     }
 
     private void persistRuntime() {
@@ -178,6 +216,9 @@ public final class TokenManager {
                         .append(' ')
                         .append(java.util.HexFormat.of().formatHex(e.getValue().hash))
                         .append('\n');
+            }
+            if (!disabledNames.isEmpty()) {
+                sb.append("disabled: ").append(String.join(",", disabledNames)).append('\n');
             }
             java.nio.file.Files.writeString(runtimeFile, sb.toString());
             try {
@@ -200,6 +241,16 @@ public final class TokenManager {
             for (String line : java.nio.file.Files.readAllLines(runtimeFile)) {
                 String trimmed = line.trim();
                 if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                    continue;
+                }
+                if (trimmed.startsWith("disabled:")) {
+                    String names = trimmed.substring("disabled:".length()).trim();
+                    for (String n : names.split(",")) {
+                        String name = n.trim();
+                        if (isValidName(name)) {
+                            disabledNames.add(name);
+                        }
+                    }
                     continue;
                 }
                 int idx = trimmed.indexOf(':');
@@ -234,6 +285,7 @@ public final class TokenManager {
         } catch (Exception e) {
             // Corrupt runtime file must never take the server down; keep only config tokens.
             runtimeEntries.clear();
+            disabledNames.clear();
         }
     }
 }

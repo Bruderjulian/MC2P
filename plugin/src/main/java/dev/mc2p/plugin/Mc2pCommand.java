@@ -51,6 +51,14 @@ public final class Mc2pCommand {
                                 .withArguments(new StringArgument("name"))
                                 .executes((CommandSender sender, CommandArguments args) ->
                                         revoke(sender, (String) args.get("name"))))
+                        .withSubcommand(new CommandAPICommand("disable")
+                                .withArguments(new StringArgument("name"))
+                                .executes((CommandSender sender, CommandArguments args) ->
+                                        disable(sender, (String) args.get("name"))))
+                        .withSubcommand(new CommandAPICommand("enable")
+                                .withArguments(new StringArgument("name"))
+                                .executes((CommandSender sender, CommandArguments args) ->
+                                        enable(sender, (String) args.get("name"))))
                         .withSubcommand(new CommandAPICommand("list")
                                 .executes((CommandSender sender, CommandArguments args) -> list(sender))))
                 .withSubcommand(new CommandAPICommand("help")
@@ -102,7 +110,8 @@ public final class Mc2pCommand {
             TokenInfo info = e.getValue();
             sender.sendMessage(Component.text(
                             "  " + info.name() + " [" + info.role() + "] token id: " + info.tokenId()
-                                    + (info.configured() ? " (config)" : " (runtime)"),
+                                    + (info.configured() ? " (config)" : " (runtime)")
+                                    + (info.disabled() ? " (disabled)" : ""),
                             NamedTextColor.GRAY)
                     .append(Component.text("", NamedTextColor.WHITE)));
         }
@@ -150,10 +159,13 @@ public final class Mc2pCommand {
                 .append(Component.text(plugin.registry().size(), NamedTextColor.WHITE)));
         for (Map.Entry<String, TokenInfo> e : plugin.tokens().snapshot().entrySet()) {
             TokenInfo info = e.getValue();
-            sender.sendMessage(Component.text(
-                            "  token " + info.name() + " [" + info.role() + "]: ", NamedTextColor.GRAY)
-                    .append(Component.text(
-                            (info.configured() ? "(config) " : "(runtime) ") + info.tokenId(), NamedTextColor.WHITE)));
+            sender.sendMessage(
+                    Component.text("  token " + info.name() + " [" + info.role() + "]: ", NamedTextColor.GRAY)
+                            .append(Component.text(
+                                    (info.configured() ? "(config) " : "(runtime) ")
+                                            + info.tokenId()
+                                            + (info.disabled() ? " (disabled)" : ""),
+                                    NamedTextColor.WHITE)));
         }
         sender.sendMessage(Component.text("  audit log: ", NamedTextColor.GRAY)
                 .append(Component.text(config.audit().file(), NamedTextColor.WHITE)));
@@ -232,6 +244,30 @@ public final class Mc2pCommand {
         }
     }
 
+    private void disable(CommandSender sender, String name) {
+        boolean changed = plugin.tokens().disable(name);
+        plugin.audit()
+                .log(null, "console", "console", plugin.serverId(), "token", "disable", "{\"name\":\"" + name + "\"}");
+        if (changed) {
+            sender.sendMessage(PREFIX.append(Component.text("Token '" + name + "' disabled.", NamedTextColor.GREEN)));
+        } else {
+            sender.sendMessage(PREFIX.append(
+                    Component.text("No active token named '" + name + "' to disable.", NamedTextColor.YELLOW)));
+        }
+    }
+
+    private void enable(CommandSender sender, String name) {
+        boolean changed = plugin.tokens().enable(name);
+        plugin.audit()
+                .log(null, "console", "console", plugin.serverId(), "token", "enable", "{\"name\":\"" + name + "\"}");
+        if (changed) {
+            sender.sendMessage(PREFIX.append(Component.text("Token '" + name + "' enabled.", NamedTextColor.GREEN)));
+        } else {
+            sender.sendMessage(PREFIX.append(
+                    Component.text("No disabled token named '" + name + "' to enable.", NamedTextColor.YELLOW)));
+        }
+    }
+
     private void list(CommandSender sender) {
         Map<String, TokenInfo> snapshot = plugin.tokens().snapshot();
         if (snapshot.isEmpty()) {
@@ -244,7 +280,8 @@ public final class Mc2pCommand {
             TokenInfo info = e.getValue();
             sender.sendMessage(Component.text(
                     "  " + info.name() + " [" + info.role() + "] " + info.tokenId()
-                            + (info.configured() ? " (config)" : " (runtime)"),
+                            + (info.configured() ? " (config)" : " (runtime)")
+                            + (info.disabled() ? " (disabled)" : ""),
                     NamedTextColor.GRAY));
         }
     }
@@ -257,6 +294,8 @@ public final class Mc2pCommand {
         sender.sendMessage(Component.text("  /mc2p activity", NamedTextColor.GRAY));
         sender.sendMessage(Component.text("  /mc2p token create <name> <reader|ops|admin>", NamedTextColor.GRAY));
         sender.sendMessage(Component.text("  /mc2p token revoke <name>", NamedTextColor.GRAY));
+        sender.sendMessage(Component.text("  /mc2p token disable <name>", NamedTextColor.GRAY));
+        sender.sendMessage(Component.text("  /mc2p token enable <name>", NamedTextColor.GRAY));
         sender.sendMessage(Component.text("  /mc2p token list", NamedTextColor.GRAY));
     }
 }

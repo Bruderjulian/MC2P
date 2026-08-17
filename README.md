@@ -242,6 +242,9 @@ On the Paper server, with `mc2p.admin`:
 /mc2p reload                               reload config.yml
 /mc2p activity                             show clients active in the last N minutes
 /mc2p token create <name> <role>           mint a named token for a role (shown once)
+/mc2p token revoke <name>                  permanently remove a runtime token
+/mc2p token disable <name>                 suspend a token without removing it
+/mc2p token enable <name>                  re-activate a disabled token
 /mc2p token revoke <name>                  revoke a runtime token by name
 /mc2p token list                           list tokens by name, role and token id
 ```

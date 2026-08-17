@@ -143,6 +143,77 @@ class TokenManagerTest {
     }
 
     @Test
+    void disableAndEnableConfiguredToken() {
+        TokenManager manager = new TokenManager(tempDir.resolve("tokens.yml"));
+        manager.updateFromConfig(Map.of("reader", configToken(Role.READER, "reader-token")));
+
+        assertTrue(manager.disable("reader"));
+        assertNull(manager.authenticate("reader-token"));
+        assertTrue(manager.snapshot().get("reader").disabled());
+        assertFalse(manager.hasRole(Role.READER));
+        assertFalse(manager.disable("missing"));
+
+        assertTrue(manager.enable("reader"));
+        assertEquals(Role.READER, manager.authenticate("reader-token").role());
+        assertFalse(manager.snapshot().get("reader").disabled());
+        assertTrue(manager.hasRole(Role.READER));
+        assertFalse(manager.enable("reader"));
+    }
+
+    @Test
+    void disableAndEnableRuntimeToken() {
+        TokenManager manager = new TokenManager(tempDir.resolve("tokens.yml"));
+        String token = manager.create("alice", Role.OPS);
+
+        assertTrue(manager.disable("alice"));
+        assertNull(manager.authenticate(token));
+        assertFalse(manager.hasRole(Role.OPS));
+
+        assertTrue(manager.enable("alice"));
+        assertEquals("alice", manager.authenticate(token).name());
+        assertTrue(manager.hasRole(Role.OPS));
+    }
+
+    @Test
+    void disabledStateSurvivesRestart() throws Exception {
+        Path file = tempDir.resolve("tokens.yml");
+        TokenManager manager = new TokenManager(file);
+        manager.updateFromConfig(Map.of("reader", configToken(Role.READER, "reader-token")));
+        manager.create("alice", Role.OPS);
+        manager.disable("reader");
+
+        TokenManager reloaded = new TokenManager(file);
+        reloaded.updateFromConfig(Map.of("reader", configToken(Role.READER, "reader-token")));
+        assertNull(reloaded.authenticate("reader-token"));
+        assertTrue(reloaded.snapshot().get("reader").disabled());
+        assertTrue(reloaded.hasRole(Role.OPS));
+        assertFalse(reloaded.snapshot().get("alice").disabled());
+    }
+
+    @Test
+    void createReactivatesDisabledName() {
+        TokenManager manager = new TokenManager(tempDir.resolve("tokens.yml"));
+        manager.updateFromConfig(Map.of("reader", configToken(Role.READER, "reader-token")));
+        manager.disable("reader");
+
+        String token = manager.create("reader", Role.OPS);
+        assertEquals(Role.OPS, manager.authenticate(token).role());
+        assertFalse(manager.snapshot().get("reader").disabled());
+    }
+
+    @Test
+    void revokeOfDisabledRuntimeTokenStaysDisabled() {
+        TokenManager manager = new TokenManager(tempDir.resolve("tokens.yml"));
+        manager.updateFromConfig(Map.of("alice", configToken(Role.READER, "reader-token")));
+        manager.create("alice", Role.OPS);
+        manager.disable("alice");
+
+        assertTrue(manager.revoke("alice"));
+        assertNull(manager.authenticate("reader-token"));
+        assertFalse(manager.hasRole(Role.READER));
+    }
+
+    @Test
     void rejectsInvalidNames() {
         assertFalse(TokenManager.isValidName(null));
         assertFalse(TokenManager.isValidName(""));

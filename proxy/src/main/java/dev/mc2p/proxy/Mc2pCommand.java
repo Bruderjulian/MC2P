@@ -48,6 +48,14 @@ public final class Mc2pCommand {
                                 .withArguments(new StringArgument("name"))
                                 .executes((CommandSource sender, CommandArguments args) ->
                                         revoke(sender, (String) args.get("name"))))
+                        .withSubcommand(new CommandAPICommand("disable")
+                                .withArguments(new StringArgument("name"))
+                                .executes((CommandSource sender, CommandArguments args) ->
+                                        disable(sender, (String) args.get("name"))))
+                        .withSubcommand(new CommandAPICommand("enable")
+                                .withArguments(new StringArgument("name"))
+                                .executes((CommandSource sender, CommandArguments args) ->
+                                        enable(sender, (String) args.get("name"))))
                         .withSubcommand(new CommandAPICommand("list")
                                 .executes((CommandSource sender, CommandArguments args) -> list(sender))))
                 .withSubcommand(new CommandAPICommand("help")
@@ -77,7 +85,7 @@ public final class Mc2pCommand {
         for (Map.Entry<String, TokenInfo> e : plugin.tokens().snapshot().entrySet()) {
             TokenInfo info = e.getValue();
             source.sendMessage(Component.text("  " + info.name() + " [" + info.role() + "] token id: " + info.tokenId()
-                    + (info.configured() ? " (config)" : " (runtime)")));
+                    + (info.configured() ? " (config)" : " (runtime)") + (info.disabled() ? " (disabled)" : "")));
         }
 
         String secret = plugin.proxySecret();
@@ -131,7 +139,8 @@ public final class Mc2pCommand {
         for (Map.Entry<String, TokenInfo> e : plugin.tokens().snapshot().entrySet()) {
             TokenInfo info = e.getValue();
             source.sendMessage(Component.text("  token " + info.name() + " [" + info.role() + "]: "
-                    + (info.configured() ? "(config) " : "(runtime) ") + info.tokenId()));
+                    + (info.configured() ? "(config) " : "(runtime) ") + info.tokenId()
+                    + (info.disabled() ? " (disabled)" : "")));
         }
         source.sendMessage(Component.text("  audit log: " + config.audit().file()));
     }
@@ -222,6 +231,30 @@ public final class Mc2pCommand {
         }
     }
 
+    private void disable(CommandSource source, String name) {
+        boolean changed = plugin.tokens().disable(name);
+        plugin.audit()
+                .log(null, "console", "console", plugin.serverId(), "token", "disable", "{\"name\":\"" + name + "\"}");
+        if (changed) {
+            source.sendMessage(Component.text("[MC2P] Token '" + name + "' disabled.", NamedTextColor.GREEN));
+        } else {
+            source.sendMessage(
+                    Component.text("[MC2P] No active token named '" + name + "' to disable.", NamedTextColor.YELLOW));
+        }
+    }
+
+    private void enable(CommandSource source, String name) {
+        boolean changed = plugin.tokens().enable(name);
+        plugin.audit()
+                .log(null, "console", "console", plugin.serverId(), "token", "enable", "{\"name\":\"" + name + "\"}");
+        if (changed) {
+            source.sendMessage(Component.text("[MC2P] Token '" + name + "' enabled.", NamedTextColor.GREEN));
+        } else {
+            source.sendMessage(
+                    Component.text("[MC2P] No disabled token named '" + name + "' to enable.", NamedTextColor.YELLOW));
+        }
+    }
+
     private void list(CommandSource source) {
         Map<String, TokenInfo> snapshot = plugin.tokens().snapshot();
         if (snapshot.isEmpty()) {
@@ -232,7 +265,7 @@ public final class Mc2pCommand {
         for (Map.Entry<String, TokenInfo> e : snapshot.entrySet()) {
             TokenInfo info = e.getValue();
             source.sendMessage(Component.text("  " + info.name() + " [" + info.role() + "] " + info.tokenId()
-                    + (info.configured() ? " (config)" : " (runtime)")));
+                    + (info.configured() ? " (config)" : " (runtime)") + (info.disabled() ? " (disabled)" : "")));
         }
     }
 
@@ -245,6 +278,8 @@ public final class Mc2pCommand {
         source.sendMessage(Component.text("  /mc2p activity"));
         source.sendMessage(Component.text("  /mc2p token create <name> <reader|ops|admin>"));
         source.sendMessage(Component.text("  /mc2p token revoke <name>"));
+        source.sendMessage(Component.text("  /mc2p token disable <name>"));
+        source.sendMessage(Component.text("  /mc2p token enable <name>"));
         source.sendMessage(Component.text("  /mc2p token list"));
     }
 }
