@@ -1,0 +1,26 @@
+version: 2
+updates:
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    groups:
+      junit:
+        patterns:
+          - "org.junit.*"
+      mcp-sdk:
+        patterns:
+          - "io.modelcontextprotocol.*"
+      jetty:
+        patterns:
+          - "org.eclipse.jetty.*"
+          - "org.eclipse.jetty.ee10.*"
+      jackson:
+        patterns:
+          - "tools.jackson.*"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5

@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Build
+        run: ./gradlew build -x test -x spotlessCheck -x checkstyleMain -x checkstyleTest --console=plain
+
+      - name: Test
+        run: ./gradlew test --console=plain
+
+      - name: Code quality
+        run: ./gradlew spotlessCheck checkstyleMain checkstyleTest --console=plain
+
+      - name: Import GPG key
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        run: |
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --yes --import
+
+      - name: Sign artifacts
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          for jar in plugin/build/libs/mc2p-plugin.jar proxy/build/libs/mc2p-proxy.jar; do
+            gpg --batch --yes --pinentry-mode loopback --passphrase "$GPG_PASSPHRASE" \
+              --armor --detach-sign --output "$jar.asc" "$jar"
+          done
+
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" --clobber \
+            plugin/build/libs/mc2p-plugin.jar \
+            plugin/build/libs/mc2p-plugin.jar.asc \
+            proxy/build/libs/mc2p-proxy.jar \
+            proxy/build/libs/mc2p-proxy.jar.asc
