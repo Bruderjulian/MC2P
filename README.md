@@ -1,32 +1,107 @@
+<div align="center">
+
 # MC2P — Minecraft MCP Bridge
 
-An MCP server that gives an AI agent control of a Paper Minecraft server, with security
-as the primary design driver.
+An MCP server that gives AI agents safe, audited control of Paper Minecraft servers.
 
-The MCP server lives **inside the plugin** (no separate process, no reverse proxy). It
-embeds the official Java MCP SDK and serves MCP Streamable HTTP on a single TLS port.
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Java](https://img.shields.io/badge/Java-17%2F21-007396.svg)](#requirements)
+[![Paper](https://img.shields.io/badge/Paper-1.20.x%E2%80%931.21.x-e3f2fd.svg)](#requirements)
+[![Velocity](https://img.shields.io/badge/Velocity-3.3%2B-9cf.svg)](#requirements)
 
-Two deployment topologies from one codebase:
+</div>
 
-- **Single server** — the Paper plugin serves MCP itself on its own port (default 8443).
-- **Multi server** — a Velocity proxy plugin hosts one public MCP port and routes tool
-  calls to backend Paper servers over plugin messaging (`mc2p:rpc`). Backends open
-  **zero** HTTP ports.
+MC2P embeds the official Java [MCP SDK](https://modelcontextprotocol.io/) **inside a
+Minecraft plugin** — no separate process, no reverse proxy. Your server publishes a
+standard Model Context Protocol (Streamable HTTP) endpoint that Claude, other MCP
+clients, or any agent can call to inspect and operate the server in real time.
+
+Security is the primary design driver. Every control point is layered: TLS with
+certificate pinning, per-role bearer tokens, IP allowlisting, rate limiting,
+fail-closed auditing, and a `confirm` gate on every destructive action.
+
+---
+
+## Features
+
+- **In-process MCP server** — the SDK runs inside the plugin and serves MCP Streamable
+  HTTP on a single TLS port (`/mcp`).
+- **Two topologies from one codebase** — single server, or a multi-server fleet behind a
+  Velocity proxy with a single public port.
+- **Read, ops, and admin role tiers** — one token per tier, cumulative permissions.
+- **Live world awareness** — status, worlds, players, blocks, regions, entities, and
+  per-player stats.
+- **Safe mutation** — messaging, teleporting, effects, whitelisting, and console
+  commands behind per-role allowlists.
+- **Fail-closed audit log** — every destructive action is recorded *before* it executes;
+  if the log can't be written, the action is refused.
+- **`/mc2p` in-game admin console** — status, reload, token rotate/revoke.
+- **`deploy` CLI** — generates tokens, secrets, configs, and an agent-ready
+  `mcpServers.json` in one command.
+
+## How it works
+
+```
+                ┌──────────────────────────────────────────────┐
+                │              Paper server                     │
+                │                                                │
+  MCP client ──HTTPS (TLS /mcp)──▶  MC2P plugin                  │
+   (Claude,       bearer token        ┌───────────────────┐     │
+    any agent)        │               │  MCP SDK (in-proc)│     │
+                       │               └───────────────────┘     │
+                       │                     │ tools            │
+                       │                     ▼                   │
+                       │              Tool layer (role-checked)  │
+                       │                     │                   │
+                       │                     ▼                   │
+                       │              Audit (fail-closed)        │
+                       └────────────▶  Paper API / console       │
+                └──────────────────────────────────────────────┘
+```
+
+The MCP server lives entirely inside the plugin. One port, one process, no extra moving
+parts — see [Security](#security) for why that design is important.
+
+## Topologies
+
+**Single server** — the Paper plugin serves MCP itself on its own port (default `8443`).
+
+```
+Agent ──HTTPS:8443──▶ Paper / MC2P plugin
+```
+
+**Multi server** — a Velocity proxy plugin hosts the one public MCP port and routes tool
+calls to backend Paper servers over plugin messaging (`mc2p:rpc`). Backends open **zero**
+HTTP ports.
+
+```
+Agent ──HTTPS:8443──▶ Velocity / MC2P proxy
+                         │ plugin messaging  mc2p:rpc  (internal)
+                         ▼
+              Paper A   ·   Paper B   ·   …
+```
+
+Player-targeted tools auto-resolve the right backend from the player's current server;
+read tools can broadcast across the fleet with `server="*"`. See
+[docs/MULTI-SERVER.md](docs/MULTI-SERVER.md).
 
 ## Modules
 
 | Module   | Description                                                                 |
 |----------|-----------------------------------------------------------------------------|
-| `common` | Shared: roles, tokens, CIDR, rate limiting, audit, RPC wire format, config. |
-| `plugin` | Paper backend plugin (standalone MCP server or zero-port RPC backend).      |
-| `proxy`  | Velocity proxy plugin (public MCP endpoint, RPC relay, fleet routing).      |
+| `common` | Shared core: roles, tokens, CIDR, rate limiting, audit, RPC wire format, config. |
+| `plugin` | Paper backend plugin — standalone MCP server or zero-port RPC backend.      |
+| `proxy`  | Velocity proxy plugin — public MCP endpoint, RPC relay, fleet routing.      |
 | `deploy` | CLI that generates tokens, secrets, configs, and agent `mcpServers` JSON.   |
 
 ## Requirements
 
-- Paper 1.20.x / 1.21.x, Java 17+ (plugin targets Java 21 for current Paper).
-- Velocity 3.3+ for the multi-server proxy.
-- Gradle 9.x (Java 21 JDK) to build.
+| Component   | Version                                  |
+|-------------|------------------------------------------|
+| Paper       | 1.20.x / 1.21.x (plugin bytecode: Java 21) |
+| Velocity    | 3.3+ (multi-server proxy only)           |
+| JDK         | 21 to build; proxy jar targets Java 17   |
+| Gradle      | 9.x                                      |
 
 ## Build
 
@@ -42,42 +117,181 @@ Artifacts:
 
 ## Quick start — single server
 
-1. Drop `mc2p-plugin.jar` into `plugins/`, start the server.
-2. Set the token env vars (see `config.yml`): `MC2P_TOKEN_READER`, `MC2P_TOKEN_OPS`,
-   `MC2P_TOKEN_ADMIN`.
-3. Open one port (8443) on the Paper box.
+1. Drop `mc2p-plugin.jar` into `plugins/` and start the server.
+2. Set the token env vars (see `config.yml`):
+
+   ```sh
+   export MC2P_TOKEN_READER="..."
+   export MC2P_TOKEN_OPS="..."
+   export MC2P_TOKEN_ADMIN="..."
+   ```
+
+3. Open **one** port (8443) on the Paper box.
 4. Point an MCP agent at `https://<host>:8443/mcp` with a bearer token. With the default
-   `tls.mode=selfsigned` export and trust the generated cert — never
+   `tls.mode: selfsigned`, export and trust the generated cert — never
    `insecureSkipVerify`.
 
 ## Quick start — multi server (Velocity proxy)
 
 1. Drop `mc2p-plugin.jar` on each backend Paper server; drop `mc2p-proxy.jar` on Velocity.
-2. Set `MC2P_PROXY_SECRET` (shared secret) on the proxy **and** every backend.
-3. Set the proxy token env vars on the proxy: `MC2P_TOKEN_READER`, `MC2P_TOKEN_OPS`,
-   `MC2P_TOKEN_ADMIN`.
-4. Open one port (8443) on the proxy box. Backends open nothing.
+2. Set the **same** shared secret on the proxy and every backend:
+
+   ```sh
+   export MC2P_PROXY_SECRET="<shared-secret>"
+   ```
+
+   With `mode: auto` (the default) the plugin resolves to *backend* mode when this env
+   var is present, and opens no ports.
+3. Set the proxy token env vars on the proxy:
+
+   ```sh
+   export MC2P_TOKEN_READER="..."
+   export MC2P_TOKEN_OPS="..."
+   export MC2P_TOKEN_ADMIN="..."
+   ```
+
+4. Open **one** port (8443) on the proxy box. Backends open nothing.
 5. Point an MCP agent at `https://proxy:8443/mcp`. Tool calls target backends via the
    `server` parameter; player tools auto-resolve from the player's current server.
 
-See [docs/MULTI-SERVER.md](docs/MULTI-SERVER.md) for the full routing model.
+### Generate everything with `deploy`
 
-## Configuration
-
-- `plugin/src/main/resources/config.yml` — backend plugin config.
-- `proxy/src/main/resources/config.yml` — proxy config.
-
-Generate everything (tokens, secret, configs, agent snippet) with:
+The `deploy` CLI generates strong random tokens, the proxy secret, matching configs, and
+an agent-ready `mcpServers.json` snippet — secrets are printed exactly once, and configs
+reference them by env var.
 
 ```sh
+./gradlew deploy:run --args="gen-config --topology standalone --host my.server.com --port 8443"
 ./gradlew deploy:run --args="gen-config --topology multi --host proxy.example.com --port 8443"
 ```
 
+Options: `--out <dir>` (default `deploy-out`), `--host <host>`, `--port <port>`,
+`--help`. The standalone output includes `config.yml`; the multi output includes
+`proxy-config.yml` plus the env-var exports to set on the proxy and each backend.
+
+## MCP client configuration
+
+```json
+{
+  "mcpServers": {
+    "mc2p": {
+      "type": "streamable-http",
+      "url": "https://<host>:8443/mcp",
+      "headers": { "Authorization": "Bearer <TOKEN>" }
+    }
+  }
+}
+```
+
+Use the token for the role you want to grant the agent (`MC2P_TOKEN_READER` /
+`MC2P_TOKEN_OPS` / `MC2P_TOKEN_ADMIN`).
+
+## Tools
+
+Roles are cumulative: `admin` can do everything `ops` and `reader` can.
+
+### Read (role: `reader`)
+
+| Tool              | Description                                                     |
+|-------------------|-----------------------------------------------------------------|
+| `server_status`   | TPS, tick, uptime, players, worlds, plugins, heap, restart strategy. |
+| `world_list`      | Worlds with dimension, spawn, loaded-chunk counts.              |
+| `plugin_list`     | Loaded plugins with version and enabled state.                  |
+| `player_list`     | Online players with uuid, name, ping, gamemode, health, location. |
+| `player_info`     | One player by UUID: effects, dimension, operator status.        |
+| `player_stats`    | Bukkit statistics snapshot by UUID (`features.stats`).          |
+| `block_get`       | Single block: material, block data, biome, light, chunk loaded. |
+| `region_get`      | Bounded block dump (region size capped by config).              |
+| `entity_list`     | Entities in a world, type-filtered and paginated.               |
+| `entity_info`     | One entity by UUID: type, position, health, passengers.         |
+
+### Ops (role: `ops` +)
+
+| Tool                 | Description                                              |
+|----------------------|----------------------------------------------------------|
+| `player_message`     | Send chat as console; formatting optional.               |
+| `player_kick` *      | Kick a player with optional reason.                      |
+| `player_teleport`    | Teleport to coordinates or another player.               |
+| `player_gamemode`    | Set survival/creative/adventure/spectator.               |
+| `player_effect`      | Apply a potion effect with duration and amplifier.       |
+| `command_execute` *  | Run console commands gated by the per-role allowlist.    |
+
+### Admin (role: `admin`)
+
+| Tool                        | Description                                             |
+|-----------------------------|---------------------------------------------------------|
+| `player_ban` *              | Ban a player by UUID.                                   |
+| `player_unban` *            | Unban a player by UUID.                                 |
+| `player_whitelist_add`      | Add a player to the whitelist.                          |
+| `player_whitelist_remove` * | Remove a player from the whitelist.                     |
+| `block_set` *               | Set one block from a curated material allowlist (`features.blockEdit`). |
+| `server_restart` *          | Restart via the configured strategy.                    |
+| `server_stop` *             | Graceful stop.                                          |
+
+\* Destructive tools are **audited fail-closed** and require `confirm: true` in the
+arguments.
+
+### Proxy-level (multi server)
+
+| Tool             | Description                                                    |
+|------------------|----------------------------------------------------------------|
+| `fleet_status`   | Aggregate `server_status` across all connected backends.       |
+| `player_locate`  | Report the current backend server of an online player.         |
+
+The proxy re-exposes every backend tool with an extra `server` parameter. Read tools
+accept `server="*"` to broadcast; control tools require an explicit `server`.
+
+## In-game admin console
+
+On the Paper server, with `mc2p.admin`:
+
+```
+/mc2p status                                  view mode, endpoint, tokens, audit log
+/mc2p reload                                  reload config.yml
+/mc2p token rotate <reader|ops|admin>         rotate a token (shown once)
+/mc2p token revoke <reader|ops|admin>         fall back to the config token
+```
+
+## Configuration
+
+- `plugin/src/main/resources/config.yml` — backend plugin config (mode, TLS, tokens,
+  rate limits, command allowlists, block editing, audit).
+- `proxy/src/main/resources/config.yml` — proxy config (server map, RPC, audit).
+
+`config.yml` is regenerated on first run if missing, and the file your server actually
+uses is the one next to the jar — copy your changes there after editing the template.
+Key sections:
+
+| Section  | What it controls                                                        |
+|----------|------------------------------------------------------------------------|
+| `mcp`    | Bind address, port, endpoint path, body limit, TLS mode.                |
+| `auth`   | Token sources per role (`env:VAR` / `file:path` / plaintext), IP allowlist, rate limit. |
+| `commands` | `command_execute` allowlists per role and the always-on deny list.    |
+| `limits` | Coordinate clamp, max region blocks, entity limit, command length.     |
+| `features` | `blockEdit`, `stats` toggles.                                        |
+| `audit`  | Audit log path, rotation size and count.                               |
+| `restart`| Restart strategy (`auto` / `spigot-restart` / `host-restart` / `disabled`). |
+
+TLS modes: `selfsigned` (default, generates a PKCS12 keystore on first run),
+`keystore` (bring your own; set `MC2P_KEYSTORE_PW`), `none-behind-proxy` (host panel
+terminates TLS), `none` (plaintext — loud warning, local testing only).
+
 ## Security
 
-Security is the primary design driver. Read [docs/SECURITY.md](docs/SECURITY.md):
-role tiers, defense in depth, fail-closed audit for destructive tools, token handling,
-TLS modes, command allowlists, and the RPC handshake.
+Security is the primary design driver. Read [docs/SECURITY.md](docs/SECURITY.md) for the
+full threat model and every control point. Highlights:
+
+- **Defense in depth** — no single layer is trusted on its own.
+- **TLS + cert pinning** — never `insecureSkipVerify`.
+- **Tokens** — stored as SHA-256 hashes, compared in constant time; rotation and
+  revocation persist across restarts.
+- **Fail-closed audit** — destructive actions are logged before they run; audit failure
+  means refusal.
+- **`confirm` gate** — every destructive tool additionally requires `confirm: true`.
+- **Command policy** — per-role allowlists plus a global deny list that wins over
+  everything, even admin.
+- **Proxy isolation** — the proxy never widens backend policy; a proxy-authorized admin
+  can only do what each backend permits.
 
 ## Verification
 
@@ -86,4 +300,35 @@ TLS modes, command allowlists, and the RPC handshake.
 ```
 
 MCP conformance can be checked against a running endpoint with the SDK's own
-`npx @modelcontextprotocol/conformance`.
+`npx @modelcontextprotocol/conformance`. A health check is exposed at
+`GET /healthz` on the MCP port.
+
+## Documentation
+
+- [docs/SECURITY.md](docs/SECURITY.md) — threat model, roles, defense in depth, TLS modes, secrets.
+- [docs/MULTI-SERVER.md](docs/MULTI-SERVER.md) — multi-server topology, routing model, SSE notifications.
+
+## Contributing
+
+Contributions are welcome. This project has a strong stance on safety — when in doubt,
+read the security docs first.
+
+Please read **[CONTRIBUTING.md](CONTRIBUTING.md)** for the full setup, guidelines, and
+pull request workflow, and **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** for our community
+standards.
+
+```sh
+git clone https://github.com/Bruderjulian/MC2P.git
+cd MC2P
+export JAVA_HOME="/path/to/jdk-21"
+./gradlew build
+./gradlew test
+```
+
+Found a security issue? **Do not open a public issue.** Report it privately via the
+[Security Advisory](https://github.com/Bruderjulian/MC2P/security/advisories) feature —
+see [SECURITY.md](SECURITY.md).
+
+## License
+
+[MIT](LICENSE) © 2026 BruderJulian
