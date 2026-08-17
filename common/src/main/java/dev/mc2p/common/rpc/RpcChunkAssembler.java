@@ -23,6 +23,16 @@ public final class RpcChunkAssembler {
     }
 
     private final Map<String, Assembly> pending = new HashMap<>();
+    private final int maxChunks;
+
+    public RpcChunkAssembler() {
+        this(-1);
+    }
+
+    /** @param maxChunks reject responses announced with more chunks than this (<=0 = unlimited) */
+    public RpcChunkAssembler(int maxChunks) {
+        this.maxChunks = maxChunks;
+    }
 
     /**
      * Feeds a {@code chunk} message; returns the fully reassembled bytes once all chunks
@@ -36,6 +46,9 @@ public final class RpcChunkAssembler {
         int idx = (int) ((Number) chunk.getOrDefault("idx", -1));
         int count = (int) ((Number) chunk.getOrDefault("count", -1));
         if (idx < 0 || count <= 0 || idx >= count) {
+            return Optional.empty();
+        }
+        if (maxChunks > 0 && count > maxChunks) {
             return Optional.empty();
         }
         String data = String.valueOf(chunk.get("data"));

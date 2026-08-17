@@ -32,6 +32,8 @@ public final class HealthzServlet extends HttpServlet {
                 "serverId", serverId,
                 "plugin", version,
                 "role", "proxy",
+                "restartStrategy", "n/a",
+                "restartAvailable", false,
                 "uptimeSeconds", (System.currentTimeMillis() - startedAt) / 1000)));
     }
 }

@@ -115,7 +115,7 @@ public final class McpProxyPlugin {
                 ? MinecraftChannelIdentifier.create(channelParts[0], channelParts[1])
                 : MinecraftChannelIdentifier.create("mc2p", config.rpc().channel());
         backendClient = new BackendClient(channel, proxySecret, config.rpc().timeoutMs(), HELLO_WINDOW_NANOS,
-                this::notifyClients);
+                config.rpc().maxChunks(), this::notifyClients);
 
         server.getChannelRegistrar().register(channel);
         rpcListener = new RpcListener(backendClient, channel);
@@ -166,6 +166,8 @@ public final class McpProxyPlugin {
             server.getEventManager().unregisterListener(this, rpcListener);
             rpcListener = null;
         }
+        server.getEventManager().unregisterListener(this, this);
+        server.getCommandManager().unregister("mc2p");
         backendClient = null;
     }
 

@@ -214,48 +214,53 @@ public final class PaperServerFacade implements ServerFacade {
 
     @Override
     public List<BlockInfo> region(String worldKey, int x1, int y1, int z1, int x2, int y2, int z2, int cap) {
-        return mainThread.call(() -> {
+        // Phase 1 (main thread): capture chunk snapshots. getChunkAt may load chunks and
+        // must run on the main thread, but ChunkSnapshot reads are safe off-thread (spec 4.4).
+        Map<String, org.bukkit.ChunkSnapshot> snapshots = mainThread.call(() -> {
             World w = requireWorld(worldKey);
-            int volume = (int) (Math.min(x2 - x1 + 1L, 2000L) * Math.min(y2 - y1 + 1L, 400L)
-                    * Math.min(z2 - z1 + 1L, 2000L));
-            if (volume > cap) {
-                volume = cap;
-            }
-            List<BlockInfo> result = new ArrayList<>(Math.min(volume, cap));
-            Map<String, org.bukkit.ChunkSnapshot> snapshotCache = new LinkedHashMap<>();
-            int snapshotsTaken = 0;
-            int collected = 0;
-            for (int x = x1; x <= x2 && collected < cap; x++) {
-                for (int y = y1; y <= y2 && collected < cap; y++) {
-                    for (int z = z1; z <= z2 && collected < cap; z++) {
-                        int cx = x >> 4;
-                        int cz = z >> 4;
-                        String key = cx + "," + cz;
-                        org.bukkit.ChunkSnapshot snapshot = snapshotCache.get(key);
-                        if (snapshot == null) {
-                            if (snapshotsTaken >= 128) {
-                                continue;
-                            }
-                            snapshot = w.getChunkAt(cx, cz).getChunkSnapshot(true, true, false);
-                            snapshotCache.put(key, snapshot);
-                            snapshotsTaken++;
-                        }
-                        int localX = x & 15;
-                        int localZ = z & 15;
-                        Material material = snapshot.getBlockType(localX, y, localZ);
-                        String blockData = snapshot.getBlockData(localX, y, localZ).getAsString();
-                        int light = snapshot.getBlockEmittedLight(localX, y, localZ);
-                        int skyLight = snapshot.getBlockSkyLight(localX, y, localZ);
-                        result.add(new BlockInfo(worldKey, x, y, z,
-                                material.getKey().getKey(), blockData,
-                                safeBiomeName(snapshot, localX, y, localZ, w),
-                                light, skyLight, true));
-                        collected++;
+            Map<String, org.bukkit.ChunkSnapshot> map = new LinkedHashMap<>();
+            for (int x = x1; x <= x2 && map.size() < 128; x++) {
+                for (int z = z1; z <= z2 && map.size() < 128; z++) {
+                    int cx = x >> 4;
+                    int cz = z >> 4;
+                    String key = cx + "," + cz;
+                    if (!map.containsKey(key)) {
+                        map.put(key, w.getChunkAt(cx, cz).getChunkSnapshot(true, true, false));
                     }
                 }
             }
-            return result;
+            return map;
         });
+
+        // Phase 2 (off-thread): read blocks from the captured snapshots only.
+        int volume = (int) (Math.min(x2 - x1 + 1L, 2000L) * Math.min(y2 - y1 + 1L, 400L)
+                * Math.min(z2 - z1 + 1L, 2000L));
+        if (volume > cap) {
+            volume = cap;
+        }
+        List<BlockInfo> result = new ArrayList<>(Math.min(volume, cap));
+        for (int x = x1; x <= x2 && result.size() < cap; x++) {
+            for (int y = y1; y <= y2 && result.size() < cap; y++) {
+                for (int z = z1; z <= z2 && result.size() < cap; z++) {
+                    String key = (x >> 4) + "," + (z >> 4);
+                    org.bukkit.ChunkSnapshot snapshot = snapshots.get(key);
+                    if (snapshot == null) {
+                        continue;
+                    }
+                    int localX = x & 15;
+                    int localZ = z & 15;
+                    Material material = snapshot.getBlockType(localX, y, localZ);
+                    String blockData = snapshot.getBlockData(localX, y, localZ).getAsString();
+                    int light = snapshot.getBlockEmittedLight(localX, y, localZ);
+                    int skyLight = snapshot.getBlockSkyLight(localX, y, localZ);
+                    result.add(new BlockInfo(worldKey, x, y, z,
+                            material.getKey().getKey(), blockData,
+                            snapshotBiomeName(snapshot, localX, y, localZ),
+                            light, skyLight, true));
+                }
+            }
+        }
+        return result;
     }
 
     @Override
@@ -614,6 +619,15 @@ public final class PaperServerFacade implements ServerFacade {
             } catch (Throwable t2) {
                 return "unknown";
             }
+        }
+    }
+
+    /** Off-thread-safe biome name from a snapshot only (snapshots carry biomes when captured with includeBiome). */
+    private static String snapshotBiomeName(org.bukkit.ChunkSnapshot snapshot, int x, int y, int z) {
+        try {
+            return snapshot.getBiome(x, y, z).getKey().getKey();
+        } catch (Throwable t) {
+            return "unknown";
         }
     }
 

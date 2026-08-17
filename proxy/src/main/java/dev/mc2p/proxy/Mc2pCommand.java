@@ -79,7 +79,7 @@ public final class Mc2pCommand implements SimpleCommand {
     }
 
     private void token(CommandSource source, String[] args) {
-        if (args.length < 2) {
+        if (args.length < 3) {
             source.sendMessage(Component.text("[MC2P] Usage: /mc2p token <rotate|revoke> <reader|ops|admin>",
                     NamedTextColor.RED));
             return;

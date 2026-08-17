@@ -72,7 +72,7 @@ public final class Mc2pCommand implements CommandExecutor {
     }
 
     private void token(CommandSender sender, String[] args) {
-        if (args.length < 2) {
+        if (args.length < 3) {
             sender.sendMessage(PREFIX + ChatColor.RED + "Usage: /mc2p token <rotate|revoke> <reader|ops|admin>");
             return;
         }

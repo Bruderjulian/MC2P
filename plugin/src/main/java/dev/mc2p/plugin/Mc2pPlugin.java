@@ -80,6 +80,13 @@ public final class Mc2pPlugin extends JavaPlugin {
         config = BackendConfig.load(loadConfigYaml());
         mode = resolveMode(config);
 
+        if ("standalone".equals(mode) && !getServer().getOnlineMode()) {
+            log.error("MC2P refuses to start in standalone mode: online-mode=false allows name spoofing. "
+                    + "Enable online-mode=true, or run behind an authenticating proxy (mode: backend).");
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+
         tokens = new TokenManager(dataDir.resolve("tokens.yml"));
         tokens.updateFromConfig(resolveTokens(config));
 

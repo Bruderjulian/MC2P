@@ -32,6 +32,7 @@ public final class BackendClient {
     private final String proxySecret;
     private final long timeoutMillis;
     private final long helloWindowNanos;
+    private final int maxChunks;
     private final Runnable resourceChangedHook;
 
     /** velocity server name → serverId (reverse of the config servers map). */
@@ -41,23 +42,28 @@ public final class BackendClient {
         volatile RegisteredServer server;
         volatile long authenticatedUntil = 0;
         final Map<String, CompletableFuture<Map<String, Object>>> pending = new ConcurrentHashMap<>();
-        final RpcChunkAssembler assembler = new RpcChunkAssembler();
+        final RpcChunkAssembler assembler;
+
+        Connection(int maxChunks) {
+            this.assembler = new RpcChunkAssembler(maxChunks);
+        }
     }
 
     private final Map<String, Connection> connections = new ConcurrentHashMap<>();
 
     public BackendClient(ChannelIdentifier channel, String proxySecret, long timeoutMillis, long helloWindowNanos,
-            Runnable resourceChangedHook) {
+            int maxChunks, Runnable resourceChangedHook) {
         this.channel = channel;
         this.proxySecret = proxySecret;
         this.timeoutMillis = Math.max(1000, timeoutMillis);
         this.helloWindowNanos = helloWindowNanos;
+        this.maxChunks = Math.max(-1, maxChunks);
         this.resourceChangedHook = resourceChangedHook;
     }
 
     public void registerServer(String serverId, RegisteredServer server) {
         nameToServerId.put(server.getServerInfo().getName(), serverId);
-        Connection conn = connections.computeIfAbsent(serverId, k -> new Connection());
+        Connection conn = connections.computeIfAbsent(serverId, k -> new Connection(maxChunks));
         conn.server = server;
         send(server, RpcMessage.hello(proxySecret));
     }
