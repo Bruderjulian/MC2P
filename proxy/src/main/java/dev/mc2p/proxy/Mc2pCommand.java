@@ -3,9 +3,12 @@ package dev.mc2p.proxy;
 import com.velocitypowered.api.command.CommandSource;
 import dev.jorel.commandapi.CommandAPICommand;
 import dev.jorel.commandapi.arguments.MultiLiteralArgument;
+import dev.jorel.commandapi.arguments.StringArgument;
 import dev.jorel.commandapi.executors.CommandArguments;
+import dev.mc2p.common.activity.ClientActivityTracker;
 import dev.mc2p.common.role.Role;
 import dev.mc2p.common.setup.SetupSupport;
+import dev.mc2p.common.tokens.TokenManager;
 import dev.mc2p.common.tokens.TokenManager.TokenInfo;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -13,7 +16,7 @@ import java.util.Map;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 
-/** {@code /mc2p} proxy console: setup, status, reload, servers, token rotate/revoke. */
+/** {@code /mc2p} proxy console: setup, status, reload, servers, token create/revoke/list. */
 public final class Mc2pCommand {
 
     private final McpProxyPlugin plugin;
@@ -33,15 +36,20 @@ public final class Mc2pCommand {
                         .executes((CommandSource sender, CommandArguments args) -> reload(sender)))
                 .withSubcommand(new CommandAPICommand("servers")
                         .executes((CommandSource sender, CommandArguments args) -> servers(sender)))
+                .withSubcommand(new CommandAPICommand("activity")
+                        .executes((CommandSource sender, CommandArguments args) -> activity(sender)))
                 .withSubcommand(new CommandAPICommand("token")
-                        .withSubcommand(new CommandAPICommand("rotate")
+                        .withSubcommand(new CommandAPICommand("create")
+                                .withArguments(new StringArgument("name"))
                                 .withArguments(new MultiLiteralArgument("role", roleLiterals()))
                                 .executes((CommandSource sender, CommandArguments args) ->
-                                        rotate(sender, (String) args.get("role"))))
+                                        create(sender, (String) args.get("name"), (String) args.get("role"))))
                         .withSubcommand(new CommandAPICommand("revoke")
-                                .withArguments(new MultiLiteralArgument("role", roleLiterals()))
+                                .withArguments(new StringArgument("name"))
                                 .executes((CommandSource sender, CommandArguments args) ->
-                                        revoke(sender, (String) args.get("role")))))
+                                        revoke(sender, (String) args.get("name"))))
+                        .withSubcommand(new CommandAPICommand("list")
+                                .executes((CommandSource sender, CommandArguments args) -> list(sender))))
                 .withSubcommand(new CommandAPICommand("help")
                         .executes((CommandSource sender, CommandArguments args) -> help(sender)))
                 .executes((CommandSource sender, CommandArguments args) -> help(sender))
@@ -61,14 +69,15 @@ public final class Mc2pCommand {
         var config = plugin.config();
         source.sendMessage(Component.text("[MC2P] setup", NamedTextColor.AQUA));
 
-        for (Map.Entry<Role, String> e : plugin.ensureTokens().entrySet()) {
-            source.sendMessage(Component.text(
-                    "Generated " + e.getKey().name().toLowerCase() + " token (shown once):", NamedTextColor.GREEN));
+        for (Map.Entry<String, String> e : plugin.ensureTokens().entrySet()) {
+            source.sendMessage(
+                    Component.text("Generated token '" + e.getKey() + "' (shown once):", NamedTextColor.GREEN));
             source.sendMessage(Component.text("  " + e.getValue(), NamedTextColor.YELLOW));
         }
-        for (Map.Entry<Role, TokenInfo> e : plugin.tokens().snapshot().entrySet()) {
-            source.sendMessage(Component.text("  " + e.getKey().name().toLowerCase() + " token id: "
-                    + e.getValue().tokenId()));
+        for (Map.Entry<String, TokenInfo> e : plugin.tokens().snapshot().entrySet()) {
+            TokenInfo info = e.getValue();
+            source.sendMessage(Component.text("  " + info.name() + " [" + info.role() + "] token id: " + info.tokenId()
+                    + (info.configured() ? " (config)" : " (runtime)")));
         }
 
         String secret = plugin.proxySecret();
@@ -100,8 +109,8 @@ public final class Mc2pCommand {
                     Component.text("Could not write mcpServers.json: " + ex.getMessage(), NamedTextColor.RED));
         }
         source.sendMessage(
-                Component.text("Agent mcpServers.json - replace <HOST> with your public host and <TOKEN> with the "
-                        + "token of the role you grant the agent:"));
+                Component.text("Agent mcpServers.json - replace <HOST> with your public host and <TOKEN> with a token "
+                        + "for the role you grant the agent:"));
         source.sendMessage(Component.text("  " + template));
         source.sendMessage(Component.text(
                 "Trust: with tls.mode=selfsigned, export the proxy's generated cert and pin it "
@@ -119,10 +128,10 @@ public final class Mc2pCommand {
         source.sendMessage(
                 Component.text("  backends: " + plugin.backendServerIds().size()));
         source.sendMessage(Component.text("  tools registered: " + plugin.toolCount()));
-        for (Map.Entry<Role, TokenInfo> e : plugin.tokens().snapshot().entrySet()) {
+        for (Map.Entry<String, TokenInfo> e : plugin.tokens().snapshot().entrySet()) {
             TokenInfo info = e.getValue();
-            source.sendMessage(Component.text("  token " + e.getKey().name().toLowerCase() + ": "
-                    + (info.configured() ? "(config) " : "(rotated) ") + info.tokenId()));
+            source.sendMessage(Component.text("  token " + info.name() + " [" + info.role() + "]: "
+                    + (info.configured() ? "(config) " : "(runtime) ") + info.tokenId()));
         }
         source.sendMessage(Component.text("  audit log: " + config.audit().file()));
     }
@@ -148,49 +157,82 @@ public final class Mc2pCommand {
         }
     }
 
-    private void rotate(CommandSource source, String roleName) {
+    private void activity(CommandSource source) {
+        java.util.List<ClientActivityTracker.Entry> active = plugin.activity().active();
+        int windowMinutes = plugin.config().auth().activityWindowMinutes();
+        source.sendMessage(
+                Component.text("[MC2P] Active clients (last " + windowMinutes + " min):", NamedTextColor.AQUA));
+        if (active.isEmpty()) {
+            source.sendMessage(Component.text("  none"));
+            return;
+        }
+        for (ClientActivityTracker.Entry e : active) {
+            source.sendMessage(Component.text("  " + e.name() + " [" + e.role() + "] " + e.remoteIp() + " requests="
+                    + e.requestCount() + " last=" + relativeTime(e.lastSeenMillis())));
+        }
+    }
+
+    private static String relativeTime(long millis) {
+        long seconds = Math.max(0, (System.currentTimeMillis() - millis) / 1000);
+        if (seconds < 60) {
+            return seconds + "s ago";
+        }
+        return (seconds / 60) + "m " + (seconds % 60) + "s ago";
+    }
+
+    private void create(CommandSource source, String name, String roleName) {
+        if (!TokenManager.isValidName(name)) {
+            source.sendMessage(Component.text(
+                    "[MC2P] Invalid token name: " + name + " (use letters, digits, - and _, max 40)",
+                    NamedTextColor.RED));
+            return;
+        }
         Role role = Role.fromString(roleName);
         if (role == null) {
             source.sendMessage(Component.text("[MC2P] Unknown role: " + roleName, NamedTextColor.RED));
             return;
         }
-        String token = plugin.tokens().rotate(role);
+        String token = plugin.tokens().create(name, role);
         plugin.audit()
                 .log(
                         null,
                         "console",
+                        "console",
                         plugin.serverId(),
                         "token",
-                        "rotate",
-                        "{\"role\":\"" + role.name().toLowerCase() + "\"}");
+                        "create",
+                        "{\"name\":\"" + name + "\",\"role\":\"" + role.name().toLowerCase() + "\"}");
         source.sendMessage(Component.text(
-                "[MC2P] New " + role.name().toLowerCase() + " token (shown once):", NamedTextColor.GREEN));
+                "[MC2P] New token '" + name + "' (" + role.name().toLowerCase() + "), shown once:",
+                NamedTextColor.GREEN));
         source.sendMessage(Component.text(token, NamedTextColor.YELLOW));
     }
 
-    private void revoke(CommandSource source, String roleName) {
-        Role role = Role.fromString(roleName);
-        if (role == null) {
-            source.sendMessage(Component.text("[MC2P] Unknown role: " + roleName, NamedTextColor.RED));
-            return;
-        }
-        boolean revoked = plugin.tokens().revoke(role);
+    private void revoke(CommandSource source, String name) {
+        boolean revoked = plugin.tokens().revoke(name);
         plugin.audit()
-                .log(
-                        null,
-                        "console",
-                        plugin.serverId(),
-                        "token",
-                        "revoke",
-                        "{\"role\":\"" + role.name().toLowerCase() + "\"}");
+                .log(null, "console", "console", plugin.serverId(), "token", "revoke", "{\"name\":\"" + name + "\"}");
         if (revoked) {
             source.sendMessage(Component.text(
-                    "[MC2P] Rotated " + role.name().toLowerCase()
-                            + " token revoked (config token, if any, is active again).",
+                    "[MC2P] Token '" + name + "' revoked (config token with the same name, if any, is active again).",
                     NamedTextColor.GREEN));
         } else {
-            source.sendMessage(Component.text(
-                    "[MC2P] No rotated " + role.name().toLowerCase() + " token to revoke.", NamedTextColor.YELLOW));
+            source.sendMessage(
+                    Component.text("[MC2P] No runtime token named '" + name + "' to revoke.", NamedTextColor.YELLOW));
+        }
+    }
+
+    private void list(CommandSource source) {
+        Map<String, TokenInfo> snapshot = plugin.tokens().snapshot();
+        if (snapshot.isEmpty()) {
+            source.sendMessage(Component.text("[MC2P] No tokens configured. Run /mc2p token create <name> <role>."));
+            return;
+        }
+        source.sendMessage(Component.text("[MC2P] Tokens:", NamedTextColor.AQUA));
+        for (Map.Entry<String, TokenInfo> e : snapshot.entrySet()) {
+            TokenInfo info = e.getValue();
+            source.sendMessage(Component.text("  " + info.name() + " [" + info.role() + "] " + info.tokenId()
+                    + (info.configured() ? " (config)" : " (runtime)")));
         }
     }
 
@@ -200,6 +242,9 @@ public final class Mc2pCommand {
         source.sendMessage(Component.text("  /mc2p status"));
         source.sendMessage(Component.text("  /mc2p reload"));
         source.sendMessage(Component.text("  /mc2p servers"));
-        source.sendMessage(Component.text("  /mc2p token rotate|revoke <reader|ops|admin>"));
+        source.sendMessage(Component.text("  /mc2p activity"));
+        source.sendMessage(Component.text("  /mc2p token create <name> <reader|ops|admin>"));
+        source.sendMessage(Component.text("  /mc2p token revoke <name>"));
+        source.sendMessage(Component.text("  /mc2p token list"));
     }
 }

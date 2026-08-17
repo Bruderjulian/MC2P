@@ -37,17 +37,27 @@ proxy:
   timeout-ms: 5000
 
 auth:
-  # One token source per role: env:VAR | file:path | plaintext (warned).
-  # Run /mc2p setup once to auto-generate missing tokens and print the agent client config.
+  # Named tokens: each key maps to a name and a role. Secrets come from
+  # env:VAR | file:path | plaintext (warned). Run /mc2p setup to auto-generate
+  # missing tokens, and /mc2p token create <name> <role> to mint new keys.
+  # The legacy role->source map (reader/ops/admin) is still accepted.
   tokens:
-    reader: env:MC2P_TOKEN_READER
-    ops: env:MC2P_TOKEN_OPS
-    admin: env:MC2P_TOKEN_ADMIN
+    - name: reader
+      role: reader
+      token: env:MC2P_TOKEN_READER
+    - name: ops
+      role: ops
+      token: env:MC2P_TOKEN_OPS
+    - name: admin
+      role: admin
+      token: env:MC2P_TOKEN_ADMIN
   # Optional: only allow these CIDR blocks to reach the MCP endpoint (empty = allow all).
   ip-allowlist: []
   rate-limit:
     tokens-per-second: 5
     burst: 20
+  # How long a client stays listed in /mc2p activity after its last request (minutes).
+  activity-window-minutes: 5
 
 commands:
   # command_execute allowlists (see docs/SECURITY.md). "prefix*" is a prefix match.

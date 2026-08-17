@@ -1,5 +1,6 @@
 package dev.mc2p.proxy.http;
 
+import dev.mc2p.common.activity.ClientActivityTracker;
 import dev.mc2p.common.net.Cidr;
 import dev.mc2p.common.ratelimit.TokenBucketRateLimiter;
 import dev.mc2p.common.tokens.TokenManager;
@@ -32,6 +33,7 @@ public final class AuthFilter implements Filter {
     public static final String ATTR_ROLE = "mc2p.role";
     public static final String ATTR_TOKEN_ID = "mc2p.tokenId";
     public static final String ATTR_REMOTE_IP = "mc2p.remoteIp";
+    public static final String ATTR_CLIENT_NAME = "mc2p.clientName";
 
     private static final Logger log = LoggerFactory.getLogger(AuthFilter.class);
 
@@ -39,13 +41,19 @@ public final class AuthFilter implements Filter {
     private final List<Cidr> ipAllowlist;
     private final TokenBucketRateLimiter rateLimiter;
     private final int bodyLimitBytes;
+    private final ClientActivityTracker activity;
 
     public AuthFilter(
-            TokenManager tokens, List<String> ipAllowlist, TokenBucketRateLimiter rateLimiter, int bodyLimitBytes) {
+            TokenManager tokens,
+            List<String> ipAllowlist,
+            TokenBucketRateLimiter rateLimiter,
+            int bodyLimitBytes,
+            ClientActivityTracker activity) {
         this.tokens = tokens;
         this.ipAllowlist = Cidr.parseAll(ipAllowlist);
         this.rateLimiter = rateLimiter;
         this.bodyLimitBytes = bodyLimitBytes;
+        this.activity = activity;
     }
 
     @Override
@@ -96,6 +104,8 @@ public final class AuthFilter implements Filter {
         request.setAttribute(ATTR_ROLE, result.role());
         request.setAttribute(ATTR_TOKEN_ID, result.tokenId());
         request.setAttribute(ATTR_REMOTE_IP, remoteIp);
+        request.setAttribute(ATTR_CLIENT_NAME, result.name());
+        activity.record(result.name(), result.role(), result.tokenId(), remoteIp);
 
         chain.doFilter(request, response);
     }

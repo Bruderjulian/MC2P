@@ -111,6 +111,7 @@ public final class RelayTools {
             try {
                 audit.log(
                         auth.role(),
+                        auth.name(),
                         auth.tokenId(),
                         proxyServerId,
                         def.name(),
@@ -136,7 +137,7 @@ public final class RelayTools {
 
         if (targets.size() == 1) {
             Optional<Map<String, Object>> response =
-                    client.call(targets.get(0), def.backendMethod(), auth.role().toString(), relayParams);
+                    client.call(targets.get(0), def.backendMethod(), auth.role().toString(), auth.name(), relayParams);
             if (response.isEmpty()) {
                 return ToolResult.error("backend " + targets.get(0) + " unreachable or timed out");
             }
@@ -151,7 +152,7 @@ public final class RelayTools {
         Map<String, Object> errors = new LinkedHashMap<>();
         for (String serverId : targets) {
             Optional<Map<String, Object>> response =
-                    client.call(serverId, def.backendMethod(), auth.role().toString(), relayParams);
+                    client.call(serverId, def.backendMethod(), auth.role().toString(), auth.name(), relayParams);
             if (response.isEmpty()) {
                 errors.put(serverId, "unreachable or timed out");
                 continue;
@@ -258,8 +259,10 @@ public final class RelayTools {
         Object role = context.get(McpRequestContextExtractor.KEY_ROLE);
         Object tokenId = context.get(McpRequestContextExtractor.KEY_TOKEN_ID);
         Object remoteIp = context.get(McpRequestContextExtractor.KEY_REMOTE_IP);
+        Object clientName = context.get(McpRequestContextExtractor.KEY_CLIENT_NAME);
         return new AuthContext(
                 role instanceof Role r ? r : null,
+                clientName == null ? "" : String.valueOf(clientName),
                 tokenId == null ? "" : String.valueOf(tokenId),
                 remoteIp == null ? "" : String.valueOf(remoteIp),
                 "http");

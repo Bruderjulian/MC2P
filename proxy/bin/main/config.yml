@@ -1,5 +1,7 @@
 # MC2P proxy configuration (Section 5.2 of the spec).
-# Tokens: use env:VAR or file:path, never plaintext in production.
+# Named tokens: each key maps to a name and a role. Secrets come from
+# env:VAR | file:path | plaintext (never plaintext in production).
+# The legacy role->source map (reader/ops/admin) is still accepted.
 serverId: proxy-01
 
 mcp:
@@ -13,14 +15,25 @@ mcp:
   body-limit-bytes: 65536
 
 auth:
+  # Named tokens: each key maps to a name and a role. Secrets come from
+  # env:VAR | file:path | plaintext (warned). Run /mc2p setup to auto-generate
+  # missing tokens, and /mc2p token create <name> <role> to mint new keys.
   tokens:
-    reader: env:MC2P_TOKEN_READER
-    ops: env:MC2P_TOKEN_OPS
-    admin: env:MC2P_TOKEN_ADMIN
+    - name: reader
+      role: reader
+      token: env:MC2P_TOKEN_READER
+    - name: ops
+      role: ops
+      token: env:MC2P_TOKEN_OPS
+    - name: admin
+      role: admin
+      token: env:MC2P_TOKEN_ADMIN
   ip-allowlist: []
   rate-limit:
     tokens-per-second: 5
     burst: 20
+  # How long a client stays listed in /mc2p activity after its last request (minutes).
+  activity-window-minutes: 5
 
 # Optional Velocity server-name -> serverId map. Auto-discovered backends use the
 # Velocity server name as the serverId when not listed here.

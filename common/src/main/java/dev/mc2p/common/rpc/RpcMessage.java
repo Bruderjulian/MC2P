@@ -15,7 +15,7 @@ import java.util.Map;
  *   hello      {"t":"hello","secret":"..."}
  *   hello-ok   {"t":"hello-ok","serverId":"..."}
  *   hello-no   {"t":"hello-no","error":"..."}
- *   req        {"t":"req","id":"...","method":"...","role":"...","params":{...}}
+ *   req        {"t":"req","id":"...","method":"...","role":"...","client":"...","params":{...}}
  *   resp       {"t":"resp","id":"...","ok":true,"result":{...} | "error":"..."}
  *   chunk      {"t":"chunk","id":"...","idx":0,"count":3,"data":"<base64>"}
  *   event      {"t":"event","event":"...","params":{...}}
@@ -49,12 +49,14 @@ public final class RpcMessage {
         return m;
     }
 
-    public static Map<String, Object> request(String id, String method, String role, Map<String, Object> params) {
+    public static Map<String, Object> request(
+            String id, String method, String role, String client, Map<String, Object> params) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("t", "req");
         m.put("id", id);
         m.put("method", method);
         m.put("role", role);
+        m.put("client", client == null ? "" : client);
         m.put("params", params == null ? Map.of() : params);
         return m;
     }

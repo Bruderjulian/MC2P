@@ -12,6 +12,7 @@ import com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import dev.jorel.commandapi.CommandAPI;
 import dev.jorel.commandapi.CommandAPIVelocityConfig;
+import dev.mc2p.common.activity.ClientActivityTracker;
 import dev.mc2p.common.audit.AuditLogger;
 import dev.mc2p.common.config.ConfigSupport;
 import dev.mc2p.common.http.HttpEndpointConfig;
@@ -29,7 +30,6 @@ import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.EnumMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
@@ -52,6 +52,7 @@ public final class McpProxyPlugin {
 
     private ProxyConfig config;
     private TokenManager tokens;
+    private ClientActivityTracker activity;
     private AuditLogger audit;
     private BackendClient backendClient;
     private ChannelIdentifier channel;
@@ -107,6 +108,8 @@ public final class McpProxyPlugin {
 
         tokens = new TokenManager(dataDirectory.resolve("tokens.yml"));
         tokens.updateFromConfig(resolveTokens(config));
+        activity = new ClientActivityTracker(
+                java.time.Duration.ofMinutes(config.auth().activityWindowMinutes()));
 
         audit = new AuditLogger(
                 dataDirectory.resolve(config.audit().file()),
@@ -157,7 +160,13 @@ public final class McpProxyPlugin {
                 config.mcp().tls().keystore(),
                 config.mcp().tls().passwordEnv());
         httpServer = new McpHttpServer(
-                http, tokens, config.auth().ipAllowlist(), config.auth().rateLimit(), dataDirectory, config.serverId());
+                http,
+                tokens,
+                config.auth().ipAllowlist(),
+                config.auth().rateLimit(),
+                dataDirectory,
+                config.serverId(),
+                activity);
         httpServer.registerServlet(transport, config.mcp().endpoint());
         httpServer.registerServlet(new HealthzServlet(config.serverId(), version), "/healthz");
         httpServer.start();
@@ -232,25 +241,31 @@ public final class McpProxyPlugin {
         }
     }
 
-    private Map<Role, String> resolveTokens(ProxyConfig config) {
-        Map<Role, String> result = new EnumMap<>(Role.class);
-        for (Map.Entry<String, String> e : config.auth().tokens().entrySet()) {
-            Role role = Role.fromString(e.getKey());
-            if (role == null) {
+    private Map<String, TokenManager.ConfigToken> resolveTokens(ProxyConfig config) {
+        Map<String, TokenManager.ConfigToken> result = new java.util.LinkedHashMap<>();
+        for (ProxyConfig.AuthSection.NamedToken nt : config.auth().tokens()) {
+            if (nt.name() == null || nt.name().isBlank()) {
                 continue;
             }
-            ConfigSupport.Secret secret = ConfigSupport.resolveSecret(e.getValue(), dataDirectory);
+            if (!TokenManager.isValidName(nt.name())) {
+                logger.warn("MC2P: invalid token name '{}' ignored (use letters, digits, - and _, max 40)", nt.name());
+                continue;
+            }
+            if (nt.role() == null) {
+                logger.warn("MC2P: unknown role for token '{}'", nt.name());
+                continue;
+            }
+            ConfigSupport.Secret secret = ConfigSupport.resolveSecret(nt.source(), dataDirectory);
             if (secret == null) {
-                logger.warn("MC2P: no token configured for role '{}' (source {})", role, e.getValue());
+                logger.warn("MC2P: no token configured for '{}' (source {})", nt.name(), nt.source());
                 continue;
             }
             if (!secret.fromEnvironment() && "config".equals(secret.source())) {
                 logger.warn(
-                        "MC2P: token for role '{}' is stored in config.yml as plaintext. "
-                                + "Use env:VAR or file:path instead.",
-                        role);
+                        "MC2P: token for '{}' is stored in config.yml as plaintext. Use env:VAR or file:path instead.",
+                        nt.name());
             }
-            result.put(role, secret.value());
+            result.put(nt.name(), new TokenManager.ConfigToken(nt.role(), secret.value()));
         }
         return result;
     }
@@ -284,6 +299,10 @@ public final class McpProxyPlugin {
         return tokens;
     }
 
+    public ClientActivityTracker activity() {
+        return activity;
+    }
+
     public AuditLogger audit() {
         return audit;
     }
@@ -297,15 +316,26 @@ public final class McpProxyPlugin {
     }
 
     /**
-     * Rotates any role that currently has no active token and returns the freshly
-     * generated plaintexts (shown exactly once).
+     * Creates default-named tokens for any role that currently has no active token and
+     * returns the freshly generated plaintexts keyed by name (shown exactly once).
      */
-    public Map<Role, String> ensureTokens() {
-        Map<Role, String> generated = new EnumMap<>(Role.class);
+    public Map<String, String> ensureTokens() {
+        Map<String, String> generated = new java.util.LinkedHashMap<>();
+        Map<String, TokenManager.TokenInfo> snapshot = tokens.snapshot();
         for (Role role : Role.values()) {
-            if (!tokens.snapshot().containsKey(role)) {
-                generated.put(role, tokens.rotate(role));
+            boolean present = snapshot.values().stream().anyMatch(t -> t.role() == role);
+            if (present) {
+                continue;
             }
+            String name = TokenManager.defaultName(role);
+            if (snapshot.containsKey(name)) {
+                int i = 2;
+                while (snapshot.containsKey(name + "-" + i)) {
+                    i++;
+                }
+                name = name + "-" + i;
+            }
+            generated.put(name, tokens.create(name, role));
         }
         return generated;
     }

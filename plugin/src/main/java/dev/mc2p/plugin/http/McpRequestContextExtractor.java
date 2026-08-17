@@ -15,6 +15,7 @@ public final class McpRequestContextExtractor implements McpTransportContextExtr
     public static final String KEY_ROLE = "mc2p.role";
     public static final String KEY_TOKEN_ID = "mc2p.tokenId";
     public static final String KEY_REMOTE_IP = "mc2p.remoteIp";
+    public static final String KEY_CLIENT_NAME = "mc2p.clientName";
 
     @Override
     public McpTransportContext extract(HttpServletRequest request) {
@@ -22,6 +23,7 @@ public final class McpRequestContextExtractor implements McpTransportContextExtr
         Object role = request.getAttribute(AuthFilter.ATTR_ROLE);
         Object tokenId = request.getAttribute(AuthFilter.ATTR_TOKEN_ID);
         Object remoteIp = request.getAttribute(AuthFilter.ATTR_REMOTE_IP);
+        Object clientName = request.getAttribute(AuthFilter.ATTR_CLIENT_NAME);
         if (role != null) {
             metadata.put(KEY_ROLE, role);
         }
@@ -30,6 +32,9 @@ public final class McpRequestContextExtractor implements McpTransportContextExtr
         }
         if (remoteIp != null) {
             metadata.put(KEY_REMOTE_IP, remoteIp);
+        }
+        if (clientName != null) {
+            metadata.put(KEY_CLIENT_NAME, clientName);
         }
         return McpTransportContext.create(metadata);
     }

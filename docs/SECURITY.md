@@ -36,8 +36,10 @@ transport layer authenticates the caller, and the tool layer **re-checks** the r
    mode generates a keystore; clients must pin the exported cert (never
    `insecureSkipVerify`). Modes: `selfsigned`, `keystore`, `none-behind-proxy`,
    `none` (loud warning, plaintext).
-2. **Bearer tokens → roles** — tokens are stored as SHA-256 hashes only (never the
-   plaintext), compared in constant time. Rotation/revocation persists across restarts.
+2. **Named Bearer tokens → name + role** — every key is minted with a name the admin
+   assigns (`/mc2p token create <name> <role>`); the name identifies the caller in the
+   audit log and in backend relays. Tokens are stored as SHA-256 hashes only (never the
+   plaintext), compared in constant time. Create/revoke persists across restarts.
 3. **IP allowlist (optional)** — CIDR blocks that may reach the MCP endpoint.
 4. **Rate limiting** — per-client token-bucket on the HTTP filter.
 5. **Tool-level authorization** — enforced at the tool layer regardless of transport
@@ -72,9 +74,10 @@ transport layer authenticates the caller, and the tool layer **re-checks** the r
   (warned against) plaintext in `config.yml`.
 - Never log a token or secret. The audit log stores the first 4 bytes of the SHA-256
   hash as a token id only.
-- `/mc2p setup` generates strong random (256-bit) tokens and the shared proxy secret;
-  configs reference them by env var or a 0600 secret file, so the plaintext appears only
-  in the one-time setup output.
+- `/mc2p setup` auto-generates default-named tokens for any role without one, and
+  `/mc2p token create <name> <role>` mints a named key on demand (256-bit random).
+  Configs reference the secrets by env var or a 0600 secret file, so the plaintext
+  appears only in the one-time setup/create output.
 
 ## Destructive tool list
 

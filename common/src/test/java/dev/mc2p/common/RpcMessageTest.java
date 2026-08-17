@@ -57,11 +57,12 @@ class RpcMessageTest {
 
     @Test
     void requestEnvelopeFields() {
-        Map<String, Object> request = RpcMessage.request("r1", "player_info", "reader", Map.of("uuid", "abc"));
+        Map<String, Object> request = RpcMessage.request("r1", "player_info", "reader", "alice", Map.of("uuid", "abc"));
         assertEquals("req", RpcMessage.type(request));
         assertEquals("r1", RpcMessage.id(request));
         assertEquals("player_info", String.valueOf(request.get("method")));
         assertEquals("reader", String.valueOf(request.get("role")));
+        assertEquals("alice", String.valueOf(request.get("client")));
     }
 
     @Test

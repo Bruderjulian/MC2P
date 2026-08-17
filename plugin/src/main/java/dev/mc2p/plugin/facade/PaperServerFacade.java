@@ -663,7 +663,7 @@ public final class PaperServerFacade implements ServerFacade {
                 sky,
                 w.isChunkLoaded(x >> 4, z >> 4));
     }
-    
+
     /** Off-thread-safe biome name from a snapshot only (snapshots carry biomes when captured with includeBiome). */
     private static String snapshotBiomeName(org.bukkit.ChunkSnapshot snapshot, int x, int y, int z) {
         try {

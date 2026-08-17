@@ -17,8 +17,9 @@ standard Model Context Protocol (Streamable HTTP) endpoint that Claude, other MC
 clients, or any agent can call to inspect and operate the server in real time.
 
 Security is the primary design driver. Every control point is layered: TLS with
-certificate pinning, per-role bearer tokens, IP allowlisting, rate limiting,
-fail-closed auditing, and a `confirm` gate on every destructive action.
+certificate pinning, named bearer tokens (each key maps to a name + role), IP
+allowlisting, rate limiting, fail-closed auditing, and a `confirm` gate on every
+destructive action.
 
 ---
 
@@ -28,14 +29,15 @@ fail-closed auditing, and a `confirm` gate on every destructive action.
   HTTP on a single TLS port (`/mcp`).
 - **Two topologies from one codebase** — single server, or a multi-server fleet behind a
   Velocity proxy with a single public port.
-- **Read, ops, and admin role tiers** — one token per tier, cumulative permissions.
+- **Read, ops, and admin role tiers** — named tokens per client, cumulative
+  permissions.
 - **Live world awareness** — status, worlds, players, blocks, regions, entities, and
   per-player stats.
 - **Safe mutation** — messaging, teleporting, effects, whitelisting, and console
   commands behind per-role allowlists.
 - **Fail-closed audit log** — every destructive action is recorded *before* it executes;
   if the log can't be written, the action is refused.
-- **`/mc2p` in-game admin console** — setup, status, reload, token rotate/revoke.
+- **`/mc2p` in-game admin console** — setup, status, reload, named token create/revoke/list.
 - **One-command setup** — `/mc2p setup` generates missing API tokens (and the shared proxy
   secret) and prints the agent-ready `mcpServers.json` template.
 
@@ -238,8 +240,10 @@ On the Paper server, with `mc2p.admin`:
 /mc2p setup                                generate missing tokens + print agent config
 /mc2p status                               view mode, endpoint, tokens, audit log
 /mc2p reload                               reload config.yml
-/mc2p token rotate <reader|ops|admin>      rotate a token (shown once)
-/mc2p token revoke <reader|ops|admin>      fall back to the config token
+/mc2p activity                             show clients active in the last N minutes
+/mc2p token create <name> <role>           mint a named token for a role (shown once)
+/mc2p token revoke <name>                  revoke a runtime token by name
+/mc2p token list                           list tokens by name, role and token id
 ```
 
 ## Configuration

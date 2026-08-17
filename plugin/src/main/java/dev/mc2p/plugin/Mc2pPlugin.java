@@ -2,6 +2,7 @@ package dev.mc2p.plugin;
 
 import dev.jorel.commandapi.CommandAPI;
 import dev.jorel.commandapi.CommandAPIPaperConfig;
+import dev.mc2p.common.activity.ClientActivityTracker;
 import dev.mc2p.common.audit.AuditLogger;
 import dev.mc2p.common.config.ConfigSupport;
 import dev.mc2p.common.http.HttpEndpointConfig;
@@ -23,7 +24,6 @@ import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.EnumMap;
 import java.util.Map;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -40,6 +40,7 @@ public final class Mc2pPlugin extends JavaPlugin {
 
     private BackendConfig config;
     private TokenManager tokens;
+    private ClientActivityTracker activity;
     private AuditLogger audit;
     private MainThread mainThread;
     private PaperServerFacade facade;
@@ -95,6 +96,8 @@ public final class Mc2pPlugin extends JavaPlugin {
 
         tokens = new TokenManager(dataDir.resolve("tokens.yml"));
         tokens.updateFromConfig(resolveTokens(config));
+        activity = new ClientActivityTracker(
+                java.time.Duration.ofMinutes(config.auth().activityWindowMinutes()));
 
         if ("standalone".equals(mode)) {
             provisionMissingTokens();
@@ -146,7 +149,13 @@ public final class Mc2pPlugin extends JavaPlugin {
                 tls.keystore(),
                 tls.passwordEnv());
         httpServer = new McpHttpServer(
-                http, tokens, config.auth().ipAllowlist(), config.auth().rateLimit(), dataDir, config.serverId());
+                http,
+                tokens,
+                config.auth().ipAllowlist(),
+                config.auth().rateLimit(),
+                dataDir,
+                config.serverId(),
+                activity);
         httpServer.registerServlet(transport, mcp.endpoint());
         httpServer.registerServlet(
                 new HealthzServlet(config.serverId(), getPluginMeta().getVersion(), mode, config.restartStrategy()),
@@ -236,26 +245,33 @@ public final class Mc2pPlugin extends JavaPlugin {
     }
 
     /** Resolves the configured token sources (env / file / plaintext). */
-    private Map<Role, String> resolveTokens(BackendConfig config) {
-        Map<Role, String> result = new EnumMap<>(Role.class);
-        for (Map.Entry<String, String> e : config.auth().tokens().entrySet()) {
-            Role role = Role.fromString(e.getKey());
-            if (role == null) {
+    private Map<String, TokenManager.ConfigToken> resolveTokens(BackendConfig config) {
+        Map<String, TokenManager.ConfigToken> result = new java.util.LinkedHashMap<>();
+        for (BackendConfig.AuthSection.NamedToken nt : config.auth().tokens()) {
+            if (nt.name() == null || nt.name().isBlank()) {
+                continue;
+            }
+            if (!TokenManager.isValidName(nt.name())) {
+                log.warn("MC2P: invalid token name '{}' ignored (use letters, digits, - and _, max 40)", nt.name());
+                continue;
+            }
+            if (nt.role() == null) {
+                log.warn("MC2P: unknown role for token '{}'", nt.name());
                 continue;
             }
             ConfigSupport.Secret secret =
-                    ConfigSupport.resolveSecret(e.getValue(), getDataFolder().toPath());
+                    ConfigSupport.resolveSecret(nt.source(), getDataFolder().toPath());
             if (secret == null) {
-                log.warn("MC2P: no token configured for role '{}' (source {})", role, e.getValue());
+                log.warn("MC2P: no token configured for '{}' (source {})", nt.name(), nt.source());
                 continue;
             }
             if (!secret.fromEnvironment() && "config".equals(secret.source())) {
                 log.warn(
-                        "MC2P: token for role '{}' is stored in config.yml as plaintext. "
+                        "MC2P: token for '{}' is stored in config.yml as plaintext. "
                                 + "Use env:VAR or file:path instead.",
-                        role);
+                        nt.name());
             }
-            result.put(role, secret.value());
+            result.put(nt.name(), new TokenManager.ConfigToken(nt.role(), secret.value()));
         }
         return result;
     }
@@ -291,6 +307,10 @@ public final class Mc2pPlugin extends JavaPlugin {
         return tokens;
     }
 
+    public ClientActivityTracker activity() {
+        return activity;
+    }
+
     public AuditLogger audit() {
         return audit;
     }
@@ -308,28 +328,39 @@ public final class Mc2pPlugin extends JavaPlugin {
     }
 
     /**
-     * Rotates any role that currently has no active token and returns the freshly
-     * generated plaintexts (shown exactly once).
+     * Creates default-named tokens for any role that currently has no active token and
+     * returns the freshly generated plaintexts keyed by name (shown exactly once).
      */
-    public Map<Role, String> ensureTokens() {
-        Map<Role, String> generated = new EnumMap<>(Role.class);
+    public Map<String, String> ensureTokens() {
+        Map<String, String> generated = new java.util.LinkedHashMap<>();
+        Map<String, TokenManager.TokenInfo> snapshot = tokens.snapshot();
         for (Role role : Role.values()) {
-            if (!tokens.snapshot().containsKey(role)) {
-                generated.put(role, tokens.rotate(role));
+            boolean present = snapshot.values().stream().anyMatch(t -> t.role() == role);
+            if (present) {
+                continue;
             }
+            String name = TokenManager.defaultName(role);
+            if (snapshot.containsKey(name)) {
+                int i = 2;
+                while (snapshot.containsKey(name + "-" + i)) {
+                    i++;
+                }
+                name = name + "-" + i;
+            }
+            generated.put(name, tokens.create(name, role));
         }
         return generated;
     }
 
     /** Auto-provisions missing API tokens on first standalone run; logs them once. */
     private void provisionMissingTokens() {
-        Map<Role, String> generated = ensureTokens();
+        Map<String, String> generated = ensureTokens();
         if (generated.isEmpty()) {
             return;
         }
         log.info("MC2P: no API tokens configured; generated the following (shown once):");
-        for (Map.Entry<Role, String> e : generated.entrySet()) {
-            log.info("  {}: {}", e.getKey().name().toLowerCase(), e.getValue());
+        for (Map.Entry<String, String> e : generated.entrySet()) {
+            log.info("  {}: {}", e.getKey(), e.getValue());
         }
         log.info("MC2P: run /mc2p setup to print the agent client config for this server.");
     }

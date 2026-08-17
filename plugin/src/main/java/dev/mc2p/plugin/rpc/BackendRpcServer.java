@@ -109,6 +109,7 @@ public final class BackendRpcServer implements PluginMessageListener {
         String id = RpcMessage.id(message);
         String method = String.valueOf(message.get("method"));
         String role = String.valueOf(message.getOrDefault("role", ""));
+        String client = String.valueOf(message.getOrDefault("client", ""));
         @SuppressWarnings("unchecked")
         Map<String, Object> params = (Map<String, Object>) message.getOrDefault("params", Map.of());
 
@@ -120,7 +121,7 @@ public final class BackendRpcServer implements PluginMessageListener {
             sendResponse(player, id, RpcMessage.response(id, false, null, "invalid role in envelope"));
             return;
         }
-        AuthContext auth = new AuthContext(parsedRole, "rpc:" + parsedRole, senderAddress(player), "rpc");
+        AuthContext auth = new AuthContext(parsedRole, client, "rpc:" + parsedRole, senderAddress(player), "rpc");
         try {
             var result = invoker.invoke(method, params, auth);
             Map<String, Object> encoded = RpcResultCodec.encode(result);

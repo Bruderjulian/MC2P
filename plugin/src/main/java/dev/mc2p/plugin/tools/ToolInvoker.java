@@ -44,6 +44,7 @@ public final class ToolInvoker {
             try {
                 audit.log(
                         role,
+                        auth.name(),
                         auth.tokenId(),
                         serverId,
                         toolName,

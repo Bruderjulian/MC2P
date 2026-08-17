@@ -87,8 +87,10 @@ public final class McpServerBootstrap {
         Object role = context.get(McpRequestContextExtractor.KEY_ROLE);
         Object tokenId = context.get(McpRequestContextExtractor.KEY_TOKEN_ID);
         Object remoteIp = context.get(McpRequestContextExtractor.KEY_REMOTE_IP);
+        Object clientName = context.get(McpRequestContextExtractor.KEY_CLIENT_NAME);
         return new AuthContext(
                 role instanceof dev.mc2p.common.role.Role r ? r : null,
+                clientName == null ? "" : String.valueOf(clientName),
                 tokenId == null ? "" : String.valueOf(tokenId),
                 remoteIp == null ? "" : String.valueOf(remoteIp),
                 "http");

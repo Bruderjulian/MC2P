@@ -50,11 +50,12 @@ public final class AuditLogger {
      *
      * @throws AuditWriteException if the entry cannot be written (fail-closed)
      */
-    public void log(Role role, String tokenId, String serverId, String tool, String action) {
-        log(role, tokenId, serverId, tool, action, "");
+    public void log(Role role, String clientName, String tokenId, String serverId, String tool, String action) {
+        log(role, clientName, tokenId, serverId, tool, action, "");
     }
 
-    public void log(Role role, String tokenId, String serverId, String tool, String action, String detail) {
+    public void log(
+            Role role, String clientName, String tokenId, String serverId, String tool, String action, String detail) {
         StringBuilder sb = new StringBuilder(256);
         sb.append('{')
                 .append("\"ts\":")
@@ -65,6 +66,8 @@ public final class AuditLogger {
                 .append(quote(tool))
                 .append(",\"action\":")
                 .append(quote(action))
+                .append(",\"client\":")
+                .append(quote(clientName == null ? "" : clientName))
                 .append(",\"role\":")
                 .append(quote(role == null ? "none" : role.name().toLowerCase()))
                 .append(",\"tokenId\":")

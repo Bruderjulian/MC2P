@@ -98,7 +98,8 @@ public final class BackendClient {
      *
      * @return the {@code resp} message ({@code ok/result|error}), or empty if unreachable
      */
-    public Optional<Map<String, Object>> call(String serverId, String method, String role, Map<String, Object> params) {
+    public Optional<Map<String, Object>> call(
+            String serverId, String method, String role, String client, Map<String, Object> params) {
         Connection conn = connections.get(serverId);
         if (conn == null) {
             return Optional.empty();
@@ -115,7 +116,7 @@ public final class BackendClient {
             if (System.nanoTime() > conn.authenticatedUntil) {
                 send(server, RpcMessage.hello(proxySecret));
             }
-            send(server, RpcMessage.request(id, method, role, params));
+            send(server, RpcMessage.request(id, method, role, client, params));
             Map<String, Object> response = future.get(timeoutMillis, TimeUnit.MILLISECONDS);
             return response == null ? Optional.empty() : Optional.of(response);
         } catch (TimeoutException e) {
