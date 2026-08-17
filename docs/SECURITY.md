@@ -72,8 +72,9 @@ transport layer authenticates the caller, and the tool layer **re-checks** the r
   (warned against) plaintext in `config.yml`.
 - Never log a token or secret. The audit log stores the first 4 bytes of the SHA-256
   hash as a token id only.
-- `deploy` generates strong random (256-bit) tokens; config files reference them by env
-  var, so the plaintext appears only in the environment and the one-time CLI output.
+- `/mc2p setup` generates strong random (256-bit) tokens and the shared proxy secret;
+  configs reference them by env var or a 0600 secret file, so the plaintext appears only
+  in the one-time setup output.
 
 ## Destructive tool list
 

@@ -55,10 +55,9 @@ export JAVA_HOME="/path/to/jdk-21"
 
 | Module   | Description                                                                 |
 |----------|-----------------------------------------------------------------------------|
-| `common` | Shared core: roles, tokens, CIDR, rate limiting, audit, RPC wire format, config. |
+| `common` | Shared core: roles, tokens, CIDR, rate limiting, audit, RPC wire format, config, setup. |
 | `plugin` | Paper backend plugin — standalone MCP server or zero-port RPC backend.      |
 | `proxy`  | Velocity proxy plugin — public MCP endpoint, RPC relay, fleet routing.      |
-| `deploy` | CLI that generates tokens, secrets, configs, and agent `mcpServers` JSON.   |
 
 Keep changes inside the right module. New shared logic belongs in `common`, new tools in
 `plugin` (`ReadTools` / `WriteTools`), proxy relays in `proxy` (`RelayTools`).

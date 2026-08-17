@@ -1,9 +1,12 @@
 package dev.mc2p.plugin;
 
+import dev.jorel.commandapi.CommandAPI;
+import dev.jorel.commandapi.CommandAPIPaperConfig;
 import dev.mc2p.common.audit.AuditLogger;
 import dev.mc2p.common.config.ConfigSupport;
 import dev.mc2p.common.http.HttpEndpointConfig;
 import dev.mc2p.common.role.Role;
+import dev.mc2p.common.setup.SetupSupport;
 import dev.mc2p.common.tokens.TokenManager;
 import dev.mc2p.plugin.config.BackendConfig;
 import dev.mc2p.plugin.facade.PaperServerFacade;
@@ -49,7 +52,13 @@ public final class Mc2pPlugin extends JavaPlugin {
     private String mode;
 
     @Override
+    public void onLoad() {
+        CommandAPI.onLoad(new CommandAPIPaperConfig(this));
+    }
+
+    @Override
     public void onEnable() {
+        CommandAPI.onEnable();
         saveDefaultConfig();
         try {
             applyConfig();
@@ -58,7 +67,7 @@ public final class Mc2pPlugin extends JavaPlugin {
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
-        getCommand("mc2p").setExecutor(new Mc2pCommand(this));
+        new Mc2pCommand(this).register();
         getServer().getPluginManager().registerEvents(new PlayerTracker(this), this);
         log.info("MC2P enabled in {} mode (serverId={})", mode, config.serverId());
     }
@@ -66,6 +75,8 @@ public final class Mc2pPlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         teardown();
+        CommandAPI.unregister("mc2p");
+        CommandAPI.onDisable();
         log.info("MC2P disabled");
     }
 
@@ -86,6 +97,10 @@ public final class Mc2pPlugin extends JavaPlugin {
         tokens = new TokenManager(dataDir.resolve("tokens.yml"));
         tokens.updateFromConfig(resolveTokens(config));
 
+        if ("standalone".equals(mode)) {
+            provisionMissingTokens();
+        }
+
         audit = new AuditLogger(
                 dataDir.resolve(config.audit().file()),
                 config.audit().maxMb(),
@@ -98,6 +113,16 @@ public final class Mc2pPlugin extends JavaPlugin {
         ReadTools.register(registry, facade, config);
         WriteTools.register(registry, facade, config);
         invoker = new ToolInvoker(registry, audit, config.serverId());
+
+        if ("backend".equals(mode) && resolveProxySecret() == null) {
+            log.error(
+                    "MC2P backend mode: no proxy secret is set ({} env var or plugins/MC2P/proxy-secret). "
+                            + "Set the same secret here and on the proxy, or run /mc2p setup on the proxy to "
+                            + "generate one. Disabling the MCP backend.",
+                    config.proxy().secretEnv());
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
 
         if ("backend".equals(mode)) {
             startBackendMode(dataDir);
@@ -131,10 +156,7 @@ public final class Mc2pPlugin extends JavaPlugin {
     }
 
     private void startBackendMode(Path dataDir) {
-        String secret = ConfigSupport.resolveSecret("env:" + config.proxy().secretEnv(), dataDir) == null
-                ? null
-                : ConfigSupport.resolveSecret("env:" + config.proxy().secretEnv(), dataDir)
-                        .value();
+        String secret = resolveProxySecret();
         if (secret == null || secret.isBlank()) {
             log.warn(
                     "MC2P backend mode: proxy secret ({}) is not set - the proxy will not be able to authenticate",
@@ -187,12 +209,19 @@ public final class Mc2pPlugin extends JavaPlugin {
     }
 
     private boolean proxySecretPresent() {
+        return resolveProxySecret() != null;
+    }
+
+    /** The shared proxy secret: the configured env var first, then plugins/MC2P/proxy-secret. */
+    public String resolveProxySecret() {
         String env = config.proxy().secretEnv();
-        if (env == null || env.isBlank()) {
-            return false;
+        if (env != null && !env.isBlank()) {
+            String value = System.getenv(env);
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
         }
-        String value = System.getenv(env);
-        return value != null && !value.isBlank();
+        return SetupSupport.readSecretFile(dataDirectory(), SetupSupport.PROXY_SECRET_FILE);
     }
 
     private boolean isBehindBungee() {
@@ -247,6 +276,10 @@ public final class Mc2pPlugin extends JavaPlugin {
 
     // ---- accessors for Mc2pCommand ----
 
+    public Path dataDirectory() {
+        return getDataFolder().toPath();
+    }
+
     public String effectiveMode() {
         return mode;
     }
@@ -273,6 +306,33 @@ public final class Mc2pPlugin extends JavaPlugin {
 
     public boolean isRestarting() {
         return false;
+    }
+
+    /**
+     * Rotates any role that currently has no active token and returns the freshly
+     * generated plaintexts (shown exactly once).
+     */
+    public Map<Role, String> ensureTokens() {
+        Map<Role, String> generated = new EnumMap<>(Role.class);
+        for (Role role : Role.values()) {
+            if (!tokens.snapshot().containsKey(role)) {
+                generated.put(role, tokens.rotate(role));
+            }
+        }
+        return generated;
+    }
+
+    /** Auto-provisions missing API tokens on first standalone run; logs them once. */
+    private void provisionMissingTokens() {
+        Map<Role, String> generated = ensureTokens();
+        if (generated.isEmpty()) {
+            return;
+        }
+        log.info("MC2P: no API tokens configured; generated the following (shown once):");
+        for (Map.Entry<Role, String> e : generated.entrySet()) {
+            log.info("  {}: {}", e.getKey().name().toLowerCase(), e.getValue());
+        }
+        log.info("MC2P: run /mc2p setup to print the agent client config for this server.");
     }
 
     /**

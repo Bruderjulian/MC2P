@@ -48,4 +48,4 @@ explicitly how. Fail-closed behavior must never be weakened. -->
 
 - [ ] Commits are focused with descriptive messages
 - [ ] No secrets or credentials introduced
-- [ ] Code follows existing module boundaries (`common` / `plugin` / `proxy` / `deploy`)
+- [ ] Code follows existing module boundaries (`common` / `plugin` / `proxy`)

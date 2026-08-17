@@ -38,7 +38,7 @@ proxy:
 
 auth:
   # One token source per role: env:VAR | file:path | plaintext (warned).
-  # Generate with: /mc2p token rotate <role>  (or the deploy CLI: ./gradlew deploy:run --args="gen-config")
+  # Run /mc2p setup once to auto-generate missing tokens and print the agent client config.
   tokens:
     reader: env:MC2P_TOKEN_READER
     ops: env:MC2P_TOKEN_OPS

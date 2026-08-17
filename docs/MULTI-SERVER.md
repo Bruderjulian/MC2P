@@ -14,32 +14,31 @@ Agent ──HTTPS(1 public port)──▶ Velocity / MC2P proxy plugin
 
 ## Setup
 
-1. **Backends**: drop `mc2p-plugin.jar` into `plugins/` on each Paper server. Set the
-   shared secret env var:
+1. **Proxy**: drop `mc2p-proxy.jar` into `plugins/` on Velocity and start it. Run
+   `/mc2p setup`:
 
-   ```sh
-   export MC2P_PROXY_SECRET="<shared-secret>"
-   ```
-
-   With `mode: auto` (the default), the plugin resolves to **backend** mode when this
-   env var is present. A backend opens no ports.
-
-2. **Proxy**: drop `mc2p-proxy.jar` into `plugins/` on Velocity. Set:
-
-   ```sh
-   export MC2P_PROXY_SECRET="<shared-secret>"     # same value as backends
-   export MC2P_TOKEN_READER="..."                  # agent tokens
-   export MC2P_TOKEN_OPS="..."
-   export MC2P_TOKEN_ADMIN="..."
-   ```
+   - It generates the `reader`/`ops`/`admin` API tokens (persisted as SHA-256 hashes in
+     `plugins/mc2p-proxy/tokens.yml`), printing any freshly generated ones exactly once.
+   - If no shared proxy secret is configured it generates one and persists it to
+     `plugins/mc2p-proxy/proxy-secret` (0600), printing it once.
+   - It activates all registered backends and writes the agent `mcpServers.json` template.
 
    Open one port (default 8443) on the proxy box.
 
-3. Generate everything reproducibly:
+2. **Backends**: drop `mc2p-plugin.jar` into `plugins/` on each Paper server and give it
+   the **same shared proxy secret** printed by the proxy's setup:
 
    ```sh
-   ./gradlew deploy:run --args="gen-config --topology multi --host proxy.example.com --port 8443"
+   export MC2P_PROXY_SECRET="<shared-secret>"       # or: plugins/MC2P/proxy-secret file
    ```
+
+   With `mode: auto` (the default), the plugin resolves to **backend** mode when this
+   secret is present (env var or file). A backend opens no ports; without the secret it
+   refuses to start.
+
+3. **Agent**: point it at `https://<proxy-host>:8443/mcp` with the token of the role you
+   grant. The client config is static except the host, port, and token — copy the
+   `mcpServers.json` template from `/mc2p setup` and fill in those three.
 
 ## Configuration
 

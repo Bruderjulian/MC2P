@@ -50,4 +50,4 @@ audit/fail-closed behavior, and validation rules. Explain how. -->
 - [ ] Defaults are conservative (feature flags off unless opted in, allowlists tight)
 - [ ] Commits are focused with descriptive messages
 - [ ] No secrets or credentials introduced
-- [ ] Code follows existing module boundaries (`common` / `plugin` / `proxy` / `deploy`)
+- [ ] Code follows existing module boundaries (`common` / `plugin` / `proxy`)

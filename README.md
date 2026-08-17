@@ -35,9 +35,9 @@ fail-closed auditing, and a `confirm` gate on every destructive action.
   commands behind per-role allowlists.
 - **Fail-closed audit log** — every destructive action is recorded *before* it executes;
   if the log can't be written, the action is refused.
-- **`/mc2p` in-game admin console** — status, reload, token rotate/revoke.
-- **`deploy` CLI** — generates tokens, secrets, configs, and an agent-ready
-  `mcpServers.json` in one command.
+- **`/mc2p` in-game admin console** — setup, status, reload, token rotate/revoke.
+- **One-command setup** — `/mc2p setup` generates missing API tokens (and the shared proxy
+  secret) and prints the agent-ready `mcpServers.json` template.
 
 ## How it works
 
@@ -89,10 +89,9 @@ read tools can broadcast across the fleet with `server="*"`. See
 
 | Module   | Description                                                                 |
 |----------|-----------------------------------------------------------------------------|
-| `common` | Shared core: roles, tokens, CIDR, rate limiting, audit, RPC wire format, config. |
+| `common` | Shared core: roles, tokens, CIDR, rate limiting, audit, RPC wire format, config, setup. |
 | `plugin` | Paper backend plugin — standalone MCP server or zero-port RPC backend.      |
 | `proxy`  | Velocity proxy plugin — public MCP endpoint, RPC relay, fleet routing.      |
-| `deploy` | CLI that generates tokens, secrets, configs, and agent `mcpServers` JSON.   |
 
 ## Requirements
 
@@ -117,15 +116,12 @@ Artifacts:
 
 ## Quick start — single server
 
-1. Drop `mc2p-plugin.jar` into `plugins/` and start the server.
-2. Set the token env vars (see `config.yml`):
-
-   ```sh
-   export MC2P_TOKEN_READER="..."
-   export MC2P_TOKEN_OPS="..."
-   export MC2P_TOKEN_ADMIN="..."
-   ```
-
+1. Drop `mc2p-plugin.jar` into `plugins/` and start the server. With `mode: auto` and no
+   proxy secret it runs **standalone** and, if no tokens are configured yet, generates all
+   three on first start (printed to the console exactly once).
+2. Run `/mc2p setup` — it prints any freshly generated tokens, writes
+   `plugins/MC2P/mcpServers.json`, and shows the agent config to paste into your MCP
+   client (fill in `<HOST>` and the token of the role you grant).
 3. Open **one** port (8443) on the Paper box.
 4. Point an MCP agent at `https://<host>:8443/mcp` with a bearer token. With the default
    `tls.mode: selfsigned`, export and trust the generated cert — never
@@ -134,40 +130,33 @@ Artifacts:
 ## Quick start — multi server (Velocity proxy)
 
 1. Drop `mc2p-plugin.jar` on each backend Paper server; drop `mc2p-proxy.jar` on Velocity.
-2. Set the **same** shared secret on the proxy and every backend:
-
-   ```sh
-   export MC2P_PROXY_SECRET="<shared-secret>"
-   ```
-
-   With `mode: auto` (the default) the plugin resolves to *backend* mode when this env
-   var is present, and opens no ports.
-3. Set the proxy token env vars on the proxy:
-
-   ```sh
-   export MC2P_TOKEN_READER="..."
-   export MC2P_TOKEN_OPS="..."
-   export MC2P_TOKEN_ADMIN="..."
-   ```
-
+2. Start the proxy and run `/mc2p setup` there. It generates the API tokens, prints the
+   **shared proxy secret** once, activates all registered backends, and writes the agent
+   `mcpServers.json` template.
+3. Put that same shared secret on **every** backend — as `MC2P_PROXY_SECRET` env var or in
+   `plugins/MC2P/proxy-secret` — then reload/restart them. With `mode: auto` a backend with
+   the secret resolves to *backend* mode and opens no ports; a backend without it refuses
+   to start.
 4. Open **one** port (8443) on the proxy box. Backends open nothing.
 5. Point an MCP agent at `https://proxy:8443/mcp`. Tool calls target backends via the
    `server` parameter; player tools auto-resolve from the player's current server.
 
-### Generate everything with `deploy`
+### In-plugin setup (`/mc2p setup`)
 
-The `deploy` CLI generates strong random tokens, the proxy secret, matching configs, and
-an agent-ready `mcpServers.json` snippet — secrets are printed exactly once, and configs
-reference them by env var.
+`/mc2p setup` on either plugin does what the old `deploy` CLI did, from the console:
 
-```sh
-./gradlew deploy:run --args="gen-config --topology standalone --host my.server.com --port 8443"
-./gradlew deploy:run --args="gen-config --topology multi --host proxy.example.com --port 8443"
-```
+- **Standalone plugin** — generates any missing `reader`/`ops`/`admin` API tokens (shown
+  once, persisted in `tokens.yml`), writes `plugins/MC2P/mcpServers.json`, and prints the
+  client config with the real port.
+- **Proxy** — generates missing API tokens, ensures the shared `MC2P_PROXY_SECRET`
+  (generated + printed once if unset; persisted in `plugins/mc2p-proxy/proxy-secret`),
+  re-activates all backends, and prints the client config.
+- **Backend plugin** — no tokens of its own; `/mc2p setup` reports the active serverId and
+  channel, or tells you the proxy secret is missing (the plugin disables itself in that
+  case).
 
-Options: `--out <dir>` (default `deploy-out`), `--host <host>`, `--port <port>`,
-`--help`. The standalone output includes `config.yml`; the multi output includes
-`proxy-config.yml` plus the env-var exports to set on the proxy and each backend.
+Secrets are always shown exactly once per generation; configs reference them by env var or
+the 0600 secret file.
 
 ## MCP client configuration
 
@@ -183,8 +172,8 @@ Options: `--out <dir>` (default `deploy-out`), `--host <host>`, `--port <port>`,
 }
 ```
 
-Use the token for the role you want to grant the agent (`MC2P_TOKEN_READER` /
-`MC2P_TOKEN_OPS` / `MC2P_TOKEN_ADMIN`).
+Use the token for the role you want to grant the agent (`reader` / `ops` / `admin`).
+`/mc2p setup` prints the template with your port already filled in.
 
 ## Tools
 
@@ -246,10 +235,11 @@ accept `server="*"` to broadcast; control tools require an explicit `server`.
 On the Paper server, with `mc2p.admin`:
 
 ```
-/mc2p status                                  view mode, endpoint, tokens, audit log
-/mc2p reload                                  reload config.yml
-/mc2p token rotate <reader|ops|admin>         rotate a token (shown once)
-/mc2p token revoke <reader|ops|admin>         fall back to the config token
+/mc2p setup                                generate missing tokens + print agent config
+/mc2p status                               view mode, endpoint, tokens, audit log
+/mc2p reload                               reload config.yml
+/mc2p token rotate <reader|ops|admin>      rotate a token (shown once)
+/mc2p token revoke <reader|ops|admin>      fall back to the config token
 ```
 
 ## Configuration

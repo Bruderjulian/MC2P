@@ -16,6 +16,8 @@ dependencies {
 
     compileOnly("com.velocitypowered:velocity-api:3.4.0")
 
+    implementation("dev.jorel:commandapi-velocity-shade:12.0.0")
+
     implementation("io.modelcontextprotocol.sdk:mcp:2.0.0")
     implementation("org.eclipse.jetty:jetty-server:12.1.12")
     implementation("org.eclipse.jetty.ee10:jetty-ee10-servlet:12.1.12")
@@ -48,6 +50,7 @@ tasks.withType<ShadowJar>().configureEach {
     relocate("reactor.core", "dev.mc2p.lib.reactor.core")
     relocate("reactor.util", "dev.mc2p.lib.reactor.util")
     relocate("org.reactivestreams", "dev.mc2p.lib.reactivestreams")
+    relocate("dev.jorel.commandapi", "dev.mc2p.lib.commandapi")
 
     exclude("META-INF/versions/**/module-info.class", "module-info.class")
     mergeServiceFiles()

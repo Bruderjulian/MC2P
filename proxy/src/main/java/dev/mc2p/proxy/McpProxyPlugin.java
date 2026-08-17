@@ -10,11 +10,15 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.messages.ChannelIdentifier;
 import com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
+import dev.jorel.commandapi.CommandAPI;
+import dev.jorel.commandapi.CommandAPIVelocityConfig;
 import dev.mc2p.common.audit.AuditLogger;
 import dev.mc2p.common.config.ConfigSupport;
 import dev.mc2p.common.http.HttpEndpointConfig;
 import dev.mc2p.common.role.Role;
+import dev.mc2p.common.setup.SetupSupport;
 import dev.mc2p.common.tokens.TokenManager;
+import dev.mc2p.common.util.Tokens;
 import dev.mc2p.proxy.config.ProxyConfig;
 import dev.mc2p.proxy.http.HealthzServlet;
 import dev.mc2p.proxy.http.McpHttpServer;
@@ -54,7 +58,6 @@ public final class McpProxyPlugin {
     private RpcListener rpcListener;
     private McpHttpServer httpServer;
     private McpSyncServer mcpServer;
-    private Mc2pCommand command;
 
     public McpProxyPlugin(
             ProxyServer server,
@@ -65,12 +68,15 @@ public final class McpProxyPlugin {
         this.logger = logger;
         this.version = description.getVersion().orElse("unknown");
         this.dataDirectory = dataDirectory;
+        CommandAPI.onLoad(new CommandAPIVelocityConfig(server, this));
     }
 
     @Subscribe
     public void onProxyInitialize(ProxyInitializeEvent event) {
         try {
             init();
+            new Mc2pCommand(this).register();
+            CommandAPI.onEnable();
         } catch (RuntimeException e) {
             logger.error("MC2P failed to start: {}", e.getMessage(), e);
         }
@@ -79,6 +85,8 @@ public final class McpProxyPlugin {
     @Subscribe
     public void onProxyShutdown(ProxyShutdownEvent event) {
         teardown();
+        CommandAPI.unregister("mc2p");
+        CommandAPI.onDisable();
     }
 
     @Subscribe
@@ -106,10 +114,13 @@ public final class McpProxyPlugin {
                 config.audit().maxFiles());
 
         String proxySecret = resolveProxySecret(config);
-        if (proxySecret == null || proxySecret.isBlank()) {
+        if (proxySecret == null) {
             logger.warn(
-                    "MC2P proxy secret ({}) is not set - backends will reject the handshake",
+                    "MC2P proxy secret ({}) is not set - generating one now (shown once); "
+                            + "set it on every backend as the same env var or in plugins/MC2P/proxy-secret.",
                     config.rpc().secretEnv());
+            proxySecret = ensureProxySecret(config);
+            logger.info("  MC2P_PROXY_SECRET: {}", proxySecret);
         }
 
         String[] channelParts = config.rpc().channel().split(":", 2);
@@ -151,15 +162,6 @@ public final class McpProxyPlugin {
         httpServer.registerServlet(new HealthzServlet(config.serverId(), version), "/healthz");
         httpServer.start();
 
-        command = new Mc2pCommand(this);
-        server.getCommandManager()
-                .register(
-                        server.getCommandManager()
-                                .metaBuilder("mc2p")
-                                .plugin(this)
-                                .build(),
-                        command);
-
         logger.info(
                 "MC2P proxy enabled (serverId={}, backends={}, tools={})",
                 config.serverId(),
@@ -188,14 +190,33 @@ public final class McpProxyPlugin {
             rpcListener = null;
         }
         server.getEventManager().unregisterListener(this, this);
-        server.getCommandManager().unregister("mc2p");
         backendClient = null;
     }
 
     private String resolveProxySecret(ProxyConfig config) {
-        ConfigSupport.Secret secret =
-                ConfigSupport.resolveSecret("env:" + config.rpc().secretEnv(), dataDirectory);
-        return secret == null ? null : secret.value();
+        String env = config.rpc().secretEnv();
+        if (env != null && !env.isBlank()) {
+            String value = System.getenv(env);
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return SetupSupport.readSecretFile(dataDirectory, SetupSupport.PROXY_SECRET_FILE);
+    }
+
+    /** Ensures a proxy secret exists (env var or the proxy-secret file), generating and persisting one if not. */
+    private String ensureProxySecret(ProxyConfig config) {
+        String secret = resolveProxySecret(config);
+        if (secret != null) {
+            return secret;
+        }
+        String generated = Tokens.generateToken();
+        try {
+            SetupSupport.writeSecretFile(dataDirectory, SetupSupport.PROXY_SECRET_FILE, generated);
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("Failed to persist the proxy secret", e);
+        }
+        return generated;
     }
 
     private Map<String, Object> loadConfig() {
@@ -267,8 +288,46 @@ public final class McpProxyPlugin {
         return audit;
     }
 
+    public Path dataDirectory() {
+        return dataDirectory;
+    }
+
     public String serverId() {
         return config == null ? "?" : config.serverId();
+    }
+
+    /**
+     * Rotates any role that currently has no active token and returns the freshly
+     * generated plaintexts (shown exactly once).
+     */
+    public Map<Role, String> ensureTokens() {
+        Map<Role, String> generated = new EnumMap<>(Role.class);
+        for (Role role : Role.values()) {
+            if (!tokens.snapshot().containsKey(role)) {
+                generated.put(role, tokens.rotate(role));
+            }
+        }
+        return generated;
+    }
+
+    /** The active proxy secret (env var or the proxy-secret file), or null when unset. */
+    public String proxySecret() {
+        return config == null ? null : resolveProxySecret(config);
+    }
+
+    /** Ensures a proxy secret exists (env var or proxy-secret file), generating one if needed. */
+    public String ensureProxySecret() {
+        return ensureProxySecret(config);
+    }
+
+    /** Re-registers every known backend with the RPC client (idempotent). */
+    public void activateBackends() {
+        if (backendClient == null) {
+            return;
+        }
+        for (RegisteredServer registered : server.getAllServers()) {
+            registerBackend(registered);
+        }
     }
 
     public int toolCount() {

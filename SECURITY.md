@@ -30,7 +30,7 @@ available. Please allow time for a fix before any public disclosure.
 
 In scope:
 
-- The MC2P plugins (`plugin`, `proxy`), `common` core, and `deploy` CLI.
+- The MC2P plugins (`plugin`, `proxy`) and the `common` core.
 - The HTTP/MCP transport layer and RPC relay.
 
 Out of scope:
