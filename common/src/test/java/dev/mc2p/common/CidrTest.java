@@ -4,13 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.mc2p.common.net.Cidr;
 import java.net.InetAddress;
 import java.util.Arrays;
 import java.util.List;
-
 import org.junit.jupiter.api.Test;
-
-import dev.mc2p.common.net.Cidr;
 
 class CidrTest {
 

@@ -1,8 +1,5 @@
 package dev.mc2p.plugin.facade;
 
-import java.util.List;
-import java.util.UUID;
-
 import dev.mc2p.plugin.facade.model.Model.BlockInfo;
 import dev.mc2p.plugin.facade.model.Model.CommandResult;
 import dev.mc2p.plugin.facade.model.Model.EntityDetails;
@@ -10,9 +7,11 @@ import dev.mc2p.plugin.facade.model.Model.EntityInfo;
 import dev.mc2p.plugin.facade.model.Model.PlayerDetails;
 import dev.mc2p.plugin.facade.model.Model.PlayerInfo;
 import dev.mc2p.plugin.facade.model.Model.PluginInfo;
-import dev.mc2p.plugin.facade.model.Model.Status;
 import dev.mc2p.plugin.facade.model.Model.StatsInfo;
+import dev.mc2p.plugin.facade.model.Model.Status;
 import dev.mc2p.plugin.facade.model.Model.WorldInfo;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * Abstraction over the host server, implemented for Paper. All Bukkit API access happens

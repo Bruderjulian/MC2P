@@ -1,22 +1,18 @@
 package dev.mc2p.plugin.tools;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
+import dev.mc2p.plugin.facade.ServerFacade;
+import dev.mc2p.plugin.http.McpRequestContextExtractor;
+import dev.mc2p.plugin.thread.MainThread;
 import io.modelcontextprotocol.json.McpJsonDefaults;
 import io.modelcontextprotocol.server.McpServer;
-import io.modelcontextprotocol.server.McpServerFeatures;
 import io.modelcontextprotocol.server.McpServerFeatures.SyncResourceSpecification;
 import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification;
 import io.modelcontextprotocol.server.McpSyncServer;
 import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpSchema.ReadResourceResult;
-
-import dev.mc2p.plugin.facade.ServerFacade;
-import dev.mc2p.plugin.http.McpRequestContextExtractor;
-import dev.mc2p.plugin.thread.MainThread;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Builds the MCP synchronous server (SDK 2.0) over the Streamable HTTP transport: tools
@@ -26,11 +22,15 @@ import dev.mc2p.plugin.thread.MainThread;
  */
 public final class McpServerBootstrap {
 
-    private McpServerBootstrap() {
-    }
+    private McpServerBootstrap() {}
 
-    public static McpSyncServer build(ToolRegistry registry, ServerFacade facade, ToolInvoker invoker,
-            HttpServletStreamableServerTransportProvider transport, String version, MainThread mainThread) {
+    public static McpSyncServer build(
+            ToolRegistry registry,
+            ServerFacade facade,
+            ToolInvoker invoker,
+            HttpServletStreamableServerTransportProvider transport,
+            String version,
+            MainThread mainThread) {
 
         List<SyncToolSpecification> tools = new ArrayList<>();
         for (ToolSpec spec : registry.all()) {
@@ -39,8 +39,8 @@ public final class McpServerBootstrap {
                     .build();
             tools.add(SyncToolSpecification.builder()
                     .tool(tool)
-                    .callHandler((exchange, request) -> invoker.invoke(spec.name(), request.arguments(),
-                            authFrom(exchange.transportContext())))
+                    .callHandler((exchange, request) ->
+                            invoker.invoke(spec.name(), request.arguments(), authFrom(exchange.transportContext())))
                     .build());
         }
 
@@ -49,9 +49,11 @@ public final class McpServerBootstrap {
                         .description("Server identity and health")
                         .mimeType("application/json")
                         .build(),
-                (exchange, request) -> ReadResourceResult.builder(List.of(
-                        McpSchema.TextResourceContents.builder("mc2p://server",
-                                dev.mc2p.common.json.Json.toJson(facade.status().toMap())).build()))
+                (exchange, request) -> ReadResourceResult.builder(List.of(McpSchema.TextResourceContents.builder(
+                                        "mc2p://server",
+                                        dev.mc2p.common.json.Json.toJson(
+                                                facade.status().toMap()))
+                                .build()))
                         .build());
 
         SyncResourceSpecification statusResource = new SyncResourceSpecification(
@@ -59,9 +61,11 @@ public final class McpServerBootstrap {
                         .description("Live server status")
                         .mimeType("application/json")
                         .build(),
-                (exchange, request) -> ReadResourceResult.builder(List.of(
-                        McpSchema.TextResourceContents.builder("mc2p://status",
-                                dev.mc2p.common.json.Json.toJson(facade.status().toMap())).build()))
+                (exchange, request) -> ReadResourceResult.builder(List.of(McpSchema.TextResourceContents.builder(
+                                        "mc2p://status",
+                                        dev.mc2p.common.json.Json.toJson(
+                                                facade.status().toMap()))
+                                .build()))
                         .build());
 
         return McpServer.sync(transport)
@@ -83,7 +87,8 @@ public final class McpServerBootstrap {
         Object role = context.get(McpRequestContextExtractor.KEY_ROLE);
         Object tokenId = context.get(McpRequestContextExtractor.KEY_TOKEN_ID);
         Object remoteIp = context.get(McpRequestContextExtractor.KEY_REMOTE_IP);
-        return new AuthContext(role instanceof dev.mc2p.common.role.Role r ? r : null,
+        return new AuthContext(
+                role instanceof dev.mc2p.common.role.Role r ? r : null,
                 tokenId == null ? "" : String.valueOf(tokenId),
                 remoteIp == null ? "" : String.valueOf(remoteIp),
                 "http");
@@ -91,13 +96,13 @@ public final class McpServerBootstrap {
 
     /** Convenience: builds the transport provider with MC2P's security wiring. */
     public static HttpServletStreamableServerTransportProvider transport(String endpoint) {
-        HttpServletStreamableServerTransportProvider.Builder builder = HttpServletStreamableServerTransportProvider
-                .builder()
-                .jsonMapper(McpJsonDefaults.getMapper())
-                .mcpEndpoint(endpoint)
-                .contextExtractor(new McpRequestContextExtractor())
-                .securityValidator(new dev.mc2p.plugin.http.DnsRebindingValidator())
-                .keepAliveInterval(java.time.Duration.ofSeconds(30));
+        HttpServletStreamableServerTransportProvider.Builder builder =
+                HttpServletStreamableServerTransportProvider.builder()
+                        .jsonMapper(McpJsonDefaults.getMapper())
+                        .mcpEndpoint(endpoint)
+                        .contextExtractor(new McpRequestContextExtractor())
+                        .securityValidator(new dev.mc2p.plugin.http.DnsRebindingValidator())
+                        .keepAliveInterval(java.time.Duration.ofSeconds(30));
         return builder.build();
     }
 }

@@ -1,10 +1,9 @@
 package dev.mc2p.proxy.config;
 
-import java.util.List;
-import java.util.Map;
-
 import dev.mc2p.common.config.ConfigSupport;
 import dev.mc2p.common.ratelimit.TokenBucketRateLimiter;
+import java.util.List;
+import java.util.Map;
 
 /** Typed proxy plugin configuration (Section 5.2 of the spec). */
 public record ProxyConfig(
@@ -17,18 +16,15 @@ public record ProxyConfig(
 
     public record McpSection(String bind, int port, String endpoint, TlsSection tls, int bodyLimitBytes) {
 
-        public record TlsSection(String mode, String keystore, String passwordEnv) {
-        }
+        public record TlsSection(String mode, String keystore, String passwordEnv) {}
     }
 
-    public record AuthSection(Map<String, String> tokens, List<String> ipAllowlist, TokenBucketRateLimiter.Config rateLimit) {
-    }
+    public record AuthSection(
+            Map<String, String> tokens, List<String> ipAllowlist, TokenBucketRateLimiter.Config rateLimit) {}
 
-    public record RpcSection(String secretEnv, String channel, long timeoutMs, int maxChunks) {
-    }
+    public record RpcSection(String secretEnv, String channel, long timeoutMs, int maxChunks) {}
 
-    public record AuditSection(String file, int maxMb, int maxFiles) {
-    }
+    public record AuditSection(String file, int maxMb, int maxFiles) {}
 
     public static ProxyConfig defaults() {
         return load(Map.of());
@@ -63,7 +59,8 @@ public record ProxyConfig(
                         ConfigSupport.integer(rate, "burst", 20)));
 
         Map<String, String> servers = new java.util.LinkedHashMap<>();
-        for (Map.Entry<String, Object> e : ConfigSupport.map(yaml.get("servers")).entrySet()) {
+        for (Map.Entry<String, Object> e :
+                ConfigSupport.map(yaml.get("servers")).entrySet()) {
             servers.put(e.getKey(), String.valueOf(e.getValue()));
         }
 

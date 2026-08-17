@@ -1,18 +1,15 @@
 package dev.mc2p.plugin.rpc;
 
-import java.util.List;
-import java.util.Map;
-
+import dev.mc2p.common.json.Json;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
-
-import dev.mc2p.common.json.Json;
+import java.util.List;
+import java.util.Map;
 
 /** Converts MCP CallToolResult values to the {@code mc2p:rpc} response wire format. */
 public final class RpcResultCodec {
 
-    private RpcResultCodec() {
-    }
+    private RpcResultCodec() {}
 
     /**
      * @return {ok, result} or {ok=false, error}
@@ -22,8 +19,11 @@ public final class RpcResultCodec {
         if (Boolean.TRUE.equals(result.isError())) {
             Map<String, Object> errorJson = safeParse(text);
             Object message = errorJson == null ? null : errorJson.get("error");
-            return Map.of("ok", false,
-                    "error", message == null ? (text == null ? "tool error" : text) : String.valueOf(message));
+            return Map.of(
+                    "ok",
+                    false,
+                    "error",
+                    message == null ? (text == null ? "tool error" : text) : String.valueOf(message));
         }
         Map<String, Object> parsed = safeParse(text);
         return Map.of("ok", true, "result", parsed == null ? Map.of("text", text == null ? "" : text) : parsed);

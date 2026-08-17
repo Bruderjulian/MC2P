@@ -4,7 +4,6 @@ package dev.mc2p.common.role;
  * Client role tiers, ordered from least to most privileged.
  */
 public enum Role {
-
     READER,
     OPS,
     ADMIN;

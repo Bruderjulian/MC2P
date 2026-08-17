@@ -1,16 +1,13 @@
 package dev.mc2p.plugin;
 
-import java.util.List;
+import dev.mc2p.common.role.Role;
+import dev.mc2p.common.tokens.TokenManager.TokenInfo;
+import dev.mc2p.plugin.config.BackendConfig;
 import java.util.Map;
-
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-
-import dev.mc2p.common.role.Role;
-import dev.mc2p.common.tokens.TokenManager.TokenInfo;
-import dev.mc2p.plugin.config.BackendConfig;
 
 /**
  * {@code /mc2p} admin console: status, reload, token rotate, token revoke.
@@ -50,16 +47,19 @@ public final class Mc2pCommand implements CommandExecutor {
         sender.sendMessage(PREFIX + "MC2P status");
         sender.sendMessage(ChatColor.GRAY + "  mode: " + ChatColor.WHITE + plugin.effectiveMode());
         sender.sendMessage(ChatColor.GRAY + "  serverId: " + ChatColor.WHITE + plugin.serverId());
-        sender.sendMessage(ChatColor.GRAY + "  mcp endpoint: " + ChatColor.WHITE + config.mcp().bind() + ":"
-                + config.mcp().port() + config.mcp().endpoint() + " (tls=" + config.mcp().tls().mode() + ")");
+        sender.sendMessage(ChatColor.GRAY + "  mcp endpoint: " + ChatColor.WHITE
+                + config.mcp().bind() + ":" + config.mcp().port() + config.mcp().endpoint() + " (tls="
+                + config.mcp().tls().mode() + ")");
         sender.sendMessage(ChatColor.GRAY + "  restart strategy: " + ChatColor.WHITE + config.restartStrategy());
-        sender.sendMessage(ChatColor.GRAY + "  tools registered: " + ChatColor.WHITE + plugin.registry().size());
+        sender.sendMessage(ChatColor.GRAY + "  tools registered: " + ChatColor.WHITE
+                + plugin.registry().size());
         for (Map.Entry<Role, TokenInfo> e : plugin.tokens().snapshot().entrySet()) {
             TokenInfo info = e.getValue();
-            sender.sendMessage(ChatColor.GRAY + "  token " + e.getKey().name().toLowerCase() + ": "
-                    + ChatColor.WHITE + (info.configured() ? "(config) " : "(rotated) ") + info.tokenId());
+            sender.sendMessage(ChatColor.GRAY + "  token " + e.getKey().name().toLowerCase() + ": " + ChatColor.WHITE
+                    + (info.configured() ? "(config) " : "(rotated) ") + info.tokenId());
         }
-        sender.sendMessage(ChatColor.GRAY + "  audit log: " + ChatColor.WHITE + config.audit().file());
+        sender.sendMessage(ChatColor.GRAY + "  audit log: " + ChatColor.WHITE
+                + config.audit().file());
     }
 
     private void reload(CommandSender sender) {
@@ -84,24 +84,38 @@ public final class Mc2pCommand implements CommandExecutor {
         switch (args[1].toLowerCase()) {
             case "rotate" -> {
                 String token = plugin.tokens().rotate(role);
-                plugin.audit().log(null, "console", plugin.serverId(), "token", "rotate",
-                        "{\"role\":\"" + role.name().toLowerCase() + "\"}");
-                sender.sendMessage(PREFIX + ChatColor.GREEN + "New " + role.name().toLowerCase() + " token (shown once):");
+                plugin.audit()
+                        .log(
+                                null,
+                                "console",
+                                plugin.serverId(),
+                                "token",
+                                "rotate",
+                                "{\"role\":\"" + role.name().toLowerCase() + "\"}");
+                sender.sendMessage(
+                        PREFIX + ChatColor.GREEN + "New " + role.name().toLowerCase() + " token (shown once):");
                 sender.sendMessage(ChatColor.YELLOW + token);
             }
             case "revoke" -> {
                 boolean revoked = plugin.tokens().revoke(role);
-                plugin.audit().log(null, "console", plugin.serverId(), "token", "revoke",
-                        "{\"role\":\"" + role.name().toLowerCase() + "\"}");
+                plugin.audit()
+                        .log(
+                                null,
+                                "console",
+                                plugin.serverId(),
+                                "token",
+                                "revoke",
+                                "{\"role\":\"" + role.name().toLowerCase() + "\"}");
                 if (revoked) {
-                    sender.sendMessage(PREFIX + ChatColor.GREEN + "Rotated " + role.name().toLowerCase()
-                            + " token revoked (config token, if any, is active again).");
+                    sender.sendMessage(PREFIX + ChatColor.GREEN + "Rotated "
+                            + role.name().toLowerCase() + " token revoked (config token, if any, is active again).");
                 } else {
-                    sender.sendMessage(PREFIX + ChatColor.YELLOW + "No rotated " + role.name().toLowerCase()
-                            + " token to revoke.");
+                    sender.sendMessage(PREFIX + ChatColor.YELLOW + "No rotated "
+                            + role.name().toLowerCase() + " token to revoke.");
                 }
             }
-            default -> sender.sendMessage(PREFIX + ChatColor.RED + "Usage: /mc2p token <rotate|revoke> <reader|ops|admin>");
+            default -> sender.sendMessage(
+                    PREFIX + ChatColor.RED + "Usage: /mc2p token <rotate|revoke> <reader|ops|admin>");
         }
     }
 

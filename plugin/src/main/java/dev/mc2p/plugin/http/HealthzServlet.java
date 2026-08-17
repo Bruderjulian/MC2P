@@ -1,14 +1,12 @@
 package dev.mc2p.plugin.http;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Map;
-
+import dev.mc2p.common.json.Json;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
-import dev.mc2p.common.json.Json;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 /** Unauthenticated, minimal health endpoint shared with the MCP port. */
 public final class HealthzServlet extends HttpServlet {
@@ -32,12 +30,13 @@ public final class HealthzServlet extends HttpServlet {
         resp.setContentType("application/json");
         resp.setCharacterEncoding(StandardCharsets.UTF_8.name());
         resp.setHeader("Cache-Control", "no-store");
-        resp.getWriter().write(Json.toJson(Map.of(
-                "serverId", serverId,
-                "plugin", version,
-                "mode", mode,
-                "restartStrategy", restartStrategy,
-                "restartAvailable", !"disabled".equals(restartStrategy),
-                "uptimeSeconds", (System.currentTimeMillis() - startedAt) / 1000)));
+        resp.getWriter()
+                .write(Json.toJson(Map.of(
+                        "serverId", serverId,
+                        "plugin", version,
+                        "mode", mode,
+                        "restartStrategy", restartStrategy,
+                        "restartAvailable", !"disabled".equals(restartStrategy),
+                        "uptimeSeconds", (System.currentTimeMillis() - startedAt) / 1000)));
     }
 }

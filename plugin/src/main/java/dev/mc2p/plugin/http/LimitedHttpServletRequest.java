@@ -1,12 +1,10 @@
 package dev.mc2p.plugin.http;
 
-import java.io.IOException;
-import java.io.InputStream;
-
 import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
+import java.io.IOException;
 
 /**
  * Caps the request body size for endpoints without a reliable Content-Length. Used by the

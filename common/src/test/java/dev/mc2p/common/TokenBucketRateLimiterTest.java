@@ -3,9 +3,8 @@ package dev.mc2p.common;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.junit.jupiter.api.Test;
-
 import dev.mc2p.common.ratelimit.TokenBucketRateLimiter;
+import org.junit.jupiter.api.Test;
 
 class TokenBucketRateLimiterTest {
 

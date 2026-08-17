@@ -12,5 +12,4 @@ public record HttpEndpointConfig(
         int bodyLimitBytes,
         String tlsMode,
         String keystore,
-        String passwordEnv) {
-}
+        String passwordEnv) {}

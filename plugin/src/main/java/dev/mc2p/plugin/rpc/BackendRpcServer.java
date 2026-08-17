@@ -1,20 +1,18 @@
 package dev.mc2p.plugin.rpc;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
-
-import org.bukkit.entity.Player;
-import org.bukkit.plugin.Plugin;
-import org.bukkit.plugin.messaging.PluginMessageListener;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import dev.mc2p.common.json.Json;
 import dev.mc2p.common.rpc.RpcMessage;
 import dev.mc2p.common.util.Tokens;
 import dev.mc2p.plugin.tools.AuthContext;
 import dev.mc2p.plugin.tools.ToolInvoker;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.plugin.messaging.PluginMessageListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Backend-mode listener for the {@code mc2p:rpc} plugin-messaging channel. Authenticates
@@ -45,7 +43,12 @@ public final class BackendRpcServer implements PluginMessageListener {
 
     private final ConcurrentHashMap<String, TrustedSender> trustedSenders = new ConcurrentHashMap<>();
 
-    public BackendRpcServer(Plugin plugin, ToolInvoker invoker, String serverId, String channel, String proxySecret,
+    public BackendRpcServer(
+            Plugin plugin,
+            ToolInvoker invoker,
+            String serverId,
+            String channel,
+            String proxySecret,
             long timeoutMillis) {
         this.plugin = plugin;
         this.invoker = invoker;
@@ -88,7 +91,8 @@ public final class BackendRpcServer implements PluginMessageListener {
             send(player, RpcMessage.helloNo("bad proxy secret"));
             return;
         }
-        trustedSenders.put(senderKey(player), new TrustedSender(player, System.nanoTime() + TimeUnit.MINUTES.toNanos(5)));
+        trustedSenders.put(
+                senderKey(player), new TrustedSender(player, System.nanoTime() + TimeUnit.MINUTES.toNanos(5)));
         send(player, RpcMessage.helloOk(serverId));
         log.info("mc2p:rpc: proxy {} authenticated", senderName(player));
     }
@@ -184,7 +188,12 @@ public final class BackendRpcServer implements PluginMessageListener {
     private String senderAddress(Player player) {
         try {
             java.net.InetSocketAddress a = player.getAddress();
-            return a == null ? "" : String.valueOf(a.getAddress() == null ? a.getHostString() : a.getAddress().getHostAddress());
+            return a == null
+                    ? ""
+                    : String.valueOf(
+                            a.getAddress() == null
+                                    ? a.getHostString()
+                                    : a.getAddress().getHostAddress());
         } catch (Exception e) {
             return "";
         }

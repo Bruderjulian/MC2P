@@ -1,11 +1,10 @@
 package dev.mc2p.plugin.tools;
 
+import dev.mc2p.common.role.Role;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import dev.mc2p.common.role.Role;
 
 /** Registry of the tools this backend exposes; shared by the MCP server and the RPC path. */
 public final class ToolRegistry {
@@ -34,6 +33,8 @@ public final class ToolRegistry {
 
     /** The tools visible to a role (required role satisfied). */
     public List<ToolSpec> visibleTo(Role role) {
-        return tools.values().stream().filter(spec -> role != null && role.can(spec.requiredRole())).toList();
+        return tools.values().stream()
+                .filter(spec -> role != null && role.can(spec.requiredRole()))
+                .toList();
     }
 }

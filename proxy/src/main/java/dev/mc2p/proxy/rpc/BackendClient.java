@@ -1,5 +1,10 @@
 package dev.mc2p.proxy.rpc;
 
+import com.velocitypowered.api.proxy.messages.ChannelIdentifier;
+import com.velocitypowered.api.proxy.server.RegisteredServer;
+import dev.mc2p.common.json.Json;
+import dev.mc2p.common.rpc.RpcChunkAssembler;
+import dev.mc2p.common.rpc.RpcMessage;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -7,16 +12,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.velocitypowered.api.proxy.messages.ChannelIdentifier;
-import com.velocitypowered.api.proxy.server.RegisteredServer;
-
-import dev.mc2p.common.json.Json;
-import dev.mc2p.common.rpc.RpcChunkAssembler;
-import dev.mc2p.common.rpc.RpcMessage;
 
 /**
  * Proxy-side relay over {@code mc2p:rpc}. Sends an authenticated {@code hello} before each
@@ -51,8 +48,13 @@ public final class BackendClient {
 
     private final Map<String, Connection> connections = new ConcurrentHashMap<>();
 
-    public BackendClient(ChannelIdentifier channel, String proxySecret, long timeoutMillis, long helloWindowNanos,
-            int maxChunks, Runnable resourceChangedHook) {
+    public BackendClient(
+            ChannelIdentifier channel,
+            String proxySecret,
+            long timeoutMillis,
+            long helloWindowNanos,
+            int maxChunks,
+            Runnable resourceChangedHook) {
         this.channel = channel;
         this.proxySecret = proxySecret;
         this.timeoutMillis = Math.max(1000, timeoutMillis);
@@ -96,8 +98,7 @@ public final class BackendClient {
      *
      * @return the {@code resp} message ({@code ok/result|error}), or empty if unreachable
      */
-    public Optional<Map<String, Object>> call(String serverId, String method, String role,
-            Map<String, Object> params) {
+    public Optional<Map<String, Object>> call(String serverId, String method, String role, Map<String, Object> params) {
         Connection conn = connections.get(serverId);
         if (conn == null) {
             return Optional.empty();
@@ -174,8 +175,7 @@ public final class BackendClient {
                 }
             }
             case "event" -> notifyClients();
-            default -> {
-            }
+            default -> {}
         }
     }
 
@@ -199,7 +199,8 @@ public final class BackendClient {
         try {
             server.sendPluginMessage(channel, Json.toJsonBytes(message));
         } catch (RuntimeException e) {
-            log.warn("mc2p:rpc: failed to send to {}: {}", server.getServerInfo().getName(), e.getMessage());
+            log.warn(
+                    "mc2p:rpc: failed to send to {}: {}", server.getServerInfo().getName(), e.getMessage());
         }
     }
 }

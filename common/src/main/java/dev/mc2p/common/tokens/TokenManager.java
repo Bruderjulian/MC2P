@@ -1,11 +1,10 @@
 package dev.mc2p.common.tokens;
 
+import dev.mc2p.common.role.Role;
+import dev.mc2p.common.util.Tokens;
 import java.nio.file.Path;
 import java.util.EnumMap;
 import java.util.Map;
-
-import dev.mc2p.common.role.Role;
-import dev.mc2p.common.util.Tokens;
 
 /**
  * Stores per-role client tokens as SHA-256 hashes only (never the plaintext), resolves
@@ -18,11 +17,9 @@ import dev.mc2p.common.util.Tokens;
  */
 public final class TokenManager {
 
-    public record AuthResult(Role role, String tokenId) {
-    }
+    public record AuthResult(Role role, String tokenId) {}
 
-    public record TokenInfo(Role role, String tokenId, boolean configured) {
-    }
+    public record TokenInfo(Role role, String tokenId, boolean configured) {}
 
     private final Path runtimeFile;
     private final Map<Role, Entry> entries = new EnumMap<>(Role.class);
@@ -141,8 +138,8 @@ public final class TokenManager {
             }
             java.nio.file.Files.writeString(runtimeFile, sb.toString());
             try {
-                java.nio.file.Files.setPosixFilePermissions(runtimeFile,
-                        java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"));
+                java.nio.file.Files.setPosixFilePermissions(
+                        runtimeFile, java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"));
             } catch (UnsupportedOperationException ignored) {
                 // non-POSIX filesystem
             }

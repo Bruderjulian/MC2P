@@ -10,8 +10,7 @@ import java.util.UUID;
  */
 public final class Validators {
 
-    private Validators() {
-    }
+    private Validators() {}
 
     /** World key allowlist: no path traversal, no absolute paths, no separators. */
     public static boolean isSafeWorldKey(String key) {
@@ -57,11 +56,12 @@ public final class Validators {
             int x = Integer.parseInt(parts[0].trim());
             int y = Integer.parseInt(parts[1].trim());
             int z = Integer.parseInt(parts[2].trim());
-            if (!isWithinCoordinate(x, maxCoord) || !isWithinCoordinate(y, maxCoord)
+            if (!isWithinCoordinate(x, maxCoord)
+                    || !isWithinCoordinate(y, maxCoord)
                     || !isWithinCoordinate(z, maxCoord)) {
                 return null;
             }
-            return new int[] { x, y, z };
+            return new int[] {x, y, z};
         } catch (NumberFormatException e) {
             return null;
         }

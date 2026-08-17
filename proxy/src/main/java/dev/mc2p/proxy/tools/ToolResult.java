@@ -1,26 +1,25 @@
 package dev.mc2p.proxy.tools;
 
-import java.util.List;
-
-import io.modelcontextprotocol.spec.McpSchema;
+import dev.mc2p.common.json.Json;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import io.modelcontextprotocol.spec.McpSchema.TextContent;
-
-import dev.mc2p.common.json.Json;
+import java.util.List;
 
 /** Helpers for building MCP CallToolResult values (proxy side). */
 public final class ToolResult {
 
-    private ToolResult() {
-    }
+    private ToolResult() {}
 
     public static CallToolResult success(Object result) {
-        return CallToolResult.builder().content(List.of(TextContent.builder(Json.toJson(result)).build())).build();
+        return CallToolResult.builder()
+                .content(List.of(TextContent.builder(Json.toJson(result)).build()))
+                .build();
     }
 
     public static CallToolResult error(String message) {
         return CallToolResult.builder()
-                .content(List.of(TextContent.builder("{\"error\":\"" + escape(message) + "\"}").build()))
+                .content(List.of(TextContent.builder("{\"error\":\"" + escape(message) + "\"}")
+                        .build()))
                 .isError(true)
                 .build();
     }

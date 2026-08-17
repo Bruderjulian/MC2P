@@ -1,8 +1,7 @@
 package dev.mc2p.plugin.tools;
 
-import java.util.Map;
-
 import dev.mc2p.common.role.Role;
+import java.util.Map;
 
 /**
  * Registration metadata for one MCP tool. {@code destructive} tools are audited and fail

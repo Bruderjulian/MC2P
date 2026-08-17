@@ -2,6 +2,7 @@ import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 
 plugins {
     java
+    id("com.diffplug.spotless") version "8.9.0" apply false
 }
 
 allprojects {
@@ -11,6 +12,8 @@ allprojects {
 
 subprojects {
     apply(plugin = "java")
+    apply(plugin = "com.diffplug.spotless")
+    apply(plugin = "checkstyle")
 
     java {
         toolchain {
@@ -21,6 +24,19 @@ subprojects {
     tasks.withType<JavaCompile>().configureEach {
         options.release.set(17)
         options.encoding = "UTF-8"
+    }
+
+    configure<com.diffplug.gradle.spotless.SpotlessExtension> {
+        java {
+            palantirJavaFormat("2.50.0")
+            target("src/*/java/**/*.java")
+        }
+    }
+
+    tasks.withType<Checkstyle>().configureEach {
+        configFile = rootProject.file("config/checkstyle/checkstyle.xml")
+        maxErrors = 0
+        maxWarnings = 0
     }
 
     tasks.withType<Test>().configureEach {

@@ -1,12 +1,10 @@
 package dev.mc2p.plugin.tools;
 
-import java.util.Map;
-
 import dev.mc2p.common.audit.AuditLogger;
 import dev.mc2p.common.json.Json;
 import dev.mc2p.common.role.Role;
-import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
+import java.util.Map;
 
 /**
  * Enforces the tool-level authorization policy for every invocation, regardless of
@@ -35,8 +33,8 @@ public final class ToolInvoker {
             return ToolResult.error("unauthenticated");
         }
         if (!role.can(spec.requiredRole())) {
-            return ToolResult.error("tool '" + toolName + "' requires role " + spec.requiredRole() + " (client: "
-                    + role + ")");
+            return ToolResult.error(
+                    "tool '" + toolName + "' requires role " + spec.requiredRole() + " (client: " + role + ")");
         }
         if (spec.requiresConfirm() && !Boolean.TRUE.equals(args == null ? null : args.get("confirm"))) {
             return ToolResult.error("tool '" + toolName + "' is destructive and requires confirm: true");
@@ -44,7 +42,12 @@ public final class ToolInvoker {
         if (spec.destructive()) {
             // Fail closed: the action must not run if it cannot be recorded.
             try {
-                audit.log(role, auth.tokenId(), serverId, toolName, "execute",
+                audit.log(
+                        role,
+                        auth.tokenId(),
+                        serverId,
+                        toolName,
+                        "execute",
                         Json.toJson(redactSecrets(spec.name(), args == null ? Map.of() : args)));
             } catch (RuntimeException e) {
                 return ToolResult.error("audit write failed; action refused: " + e.getMessage());

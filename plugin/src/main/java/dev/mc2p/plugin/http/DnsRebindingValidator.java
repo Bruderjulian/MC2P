@@ -1,11 +1,9 @@
 package dev.mc2p.plugin.http;
 
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-
 import io.modelcontextprotocol.server.transport.ServerTransportSecurityException;
 import io.modelcontextprotocol.server.transport.ServerTransportSecurityValidator;
+import java.util.List;
+import java.util.Map;
 
 /**
  * DNS-rebinding / CSRF protection: non-browser MCP clients send no {@code Origin} header
@@ -44,7 +42,9 @@ public final class DnsRebindingValidator implements ServerTransportSecurityValid
 
     private static String first(Map<String, List<String>> headers, String name) {
         for (Map.Entry<String, List<String>> e : headers.entrySet()) {
-            if (e.getKey().equalsIgnoreCase(name) && e.getValue() != null && !e.getValue().isEmpty()) {
+            if (e.getKey().equalsIgnoreCase(name)
+                    && e.getValue() != null
+                    && !e.getValue().isEmpty()) {
                 return e.getValue().get(0);
             }
         }

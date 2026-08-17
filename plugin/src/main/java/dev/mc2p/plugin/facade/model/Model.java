@@ -7,11 +7,9 @@ import java.util.UUID;
 /** Pure data model shared by the ServerFacade interface and tool handlers. */
 public final class Model {
 
-    private Model() {
-    }
+    private Model() {}
 
-    public record Tps(double oneMin, double fiveMin, double fifteenMin) {
-    }
+    public record Tps(double oneMin, double fiveMin, double fifteenMin) {}
 
     public record Status(
             String serverId,
@@ -99,10 +97,7 @@ public final class Model {
         }
     }
 
-    public record PlayerDetails(
-            PlayerInfo base,
-            List<String> effects,
-            boolean isOp) {
+    public record PlayerDetails(PlayerInfo base, List<String> effects, boolean isOp) {
 
         public Map<String, Object> toMap() {
             Map<String, Object> result = new java.util.LinkedHashMap<>(base.toMap());
@@ -145,30 +140,26 @@ public final class Model {
     }
 
     public record EntityInfo(
-            UUID uuid,
-            String type,
-            double x,
-            double y,
-            double z,
-            String world,
-            double health,
-            String name) {
+            UUID uuid, String type, double x, double y, double z, String world, double health, String name) {
 
         public Map<String, Object> toMap() {
             return Map.of(
-                    "uuid", uuid.toString(),
-                    "type", type,
-                    "position", Map.of("x", x, "y", y, "z", z),
-                    "world", world,
-                    "health", health,
-                    "name", name == null ? "" : name);
+                    "uuid",
+                    uuid.toString(),
+                    "type",
+                    type,
+                    "position",
+                    Map.of("x", x, "y", y, "z", z),
+                    "world",
+                    world,
+                    "health",
+                    health,
+                    "name",
+                    name == null ? "" : name);
         }
     }
 
-    public record EntityDetails(
-            EntityInfo base,
-            List<String> passengers,
-            String vehicle) {
+    public record EntityDetails(EntityInfo base, List<String> passengers, String vehicle) {
 
         public Map<String, Object> toMap() {
             Map<String, Object> result = new java.util.LinkedHashMap<>(base.toMap());

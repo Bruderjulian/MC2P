@@ -1,12 +1,11 @@
 package dev.mc2p.common.audit;
 
+import dev.mc2p.common.role.Role;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Instant;
-
-import dev.mc2p.common.role.Role;
 
 /**
  * Append-only JSON-lines audit log with size-based rotation. Destructive actions
@@ -58,13 +57,20 @@ public final class AuditLogger {
     public void log(Role role, String tokenId, String serverId, String tool, String action, String detail) {
         StringBuilder sb = new StringBuilder(256);
         sb.append('{')
-                .append("\"ts\":").append(quote(Instant.now().toString()))
-                .append(",\"serverId\":").append(quote(serverId))
-                .append(",\"tool\":").append(quote(tool))
-                .append(",\"action\":").append(quote(action))
-                .append(",\"role\":").append(quote(role == null ? "none" : role.name().toLowerCase()))
-                .append(",\"tokenId\":").append(quote(tokenId == null ? "" : tokenId))
-                .append(",\"detail\":").append(detail == null || detail.isEmpty() ? "{}" : detail)
+                .append("\"ts\":")
+                .append(quote(Instant.now().toString()))
+                .append(",\"serverId\":")
+                .append(quote(serverId))
+                .append(",\"tool\":")
+                .append(quote(tool))
+                .append(",\"action\":")
+                .append(quote(action))
+                .append(",\"role\":")
+                .append(quote(role == null ? "none" : role.name().toLowerCase()))
+                .append(",\"tokenId\":")
+                .append(quote(tokenId == null ? "" : tokenId))
+                .append(",\"detail\":")
+                .append(detail == null || detail.isEmpty() ? "{}" : detail)
                 .append("}\n");
         writeLine(sb.toString());
     }
@@ -73,8 +79,8 @@ public final class AuditLogger {
         synchronized (lock) {
             try {
                 Files.createDirectories(file.getParent());
-                Files.writeString(file, line, StandardCharsets.UTF_8, StandardOpenOption.CREATE,
-                        StandardOpenOption.APPEND);
+                Files.writeString(
+                        file, line, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
                 approximateSize += line.getBytes(StandardCharsets.UTF_8).length;
                 if (approximateSize > maxBytes) {
                     rotate();

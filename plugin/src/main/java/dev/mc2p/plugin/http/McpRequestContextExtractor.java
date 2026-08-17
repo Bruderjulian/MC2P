@@ -1,12 +1,10 @@
 package dev.mc2p.plugin.http;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-
-import jakarta.servlet.http.HttpServletRequest;
-
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.server.McpTransportContextExtractor;
+import jakarta.servlet.http.HttpServletRequest;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Turns the identity attributes stamped by {@link AuthFilter} into the MCP transport

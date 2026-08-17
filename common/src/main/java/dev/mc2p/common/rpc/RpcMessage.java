@@ -26,8 +26,7 @@ public final class RpcMessage {
     /** Responses at or below this serialized size travel as a single {@code resp}. */
     public static final int MAX_PAYLOAD_BYTES = 16 * 1024;
 
-    private RpcMessage() {
-    }
+    private RpcMessage() {}
 
     public static Map<String, Object> hello(String secret) {
         Map<String, Object> m = new LinkedHashMap<>();

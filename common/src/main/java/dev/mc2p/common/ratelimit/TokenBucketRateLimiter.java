@@ -9,8 +9,7 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public final class TokenBucketRateLimiter {
 
-    public record Config(double tokensPerSecond, int burst) {
-    }
+    public record Config(double tokensPerSecond, int burst) {}
 
     private static final class Bucket {
         final double rate;

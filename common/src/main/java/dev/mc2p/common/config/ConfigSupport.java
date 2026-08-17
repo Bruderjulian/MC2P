@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.yaml.snakeyaml.Yaml;
 
 /**
@@ -17,11 +16,9 @@ import org.yaml.snakeyaml.Yaml;
  */
 public final class ConfigSupport {
 
-    public record Secret(String value, String source, boolean fromEnvironment) {
-    }
+    public record Secret(String value, String source, boolean fromEnvironment) {}
 
-    private ConfigSupport() {
-    }
+    private ConfigSupport() {}
 
     @SuppressWarnings("unchecked")
     public static Map<String, Object> loadYaml(Path file) throws IOException {

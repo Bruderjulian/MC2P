@@ -1,9 +1,8 @@
 package dev.mc2p.common.validate;
 
+import dev.mc2p.common.role.Role;
 import java.util.List;
 import java.util.Locale;
-
-import dev.mc2p.common.role.Role;
 
 /**
  * Server-side command policy: a per-role allowlist plus a deny list that applies even to
@@ -17,8 +16,8 @@ public final class CommandPolicy {
     private final List<String> deny;
     private final int maxCommandLength;
 
-    public CommandPolicy(List<String> opsAllowlist, List<String> adminAllowlist, List<String> deny,
-            int maxCommandLength) {
+    public CommandPolicy(
+            List<String> opsAllowlist, List<String> adminAllowlist, List<String> deny, int maxCommandLength) {
         this.opsAllowlist = normalize(opsAllowlist);
         this.adminAllowlist = normalize(adminAllowlist);
         this.deny = normalize(deny);
@@ -29,7 +28,9 @@ public final class CommandPolicy {
         if (list == null) {
             return List.of();
         }
-        return list.stream().filter(s -> s != null && !s.isBlank()).map(s -> s.trim().toLowerCase(Locale.ROOT))
+        return list.stream()
+                .filter(s -> s != null && !s.isBlank())
+                .map(s -> s.trim().toLowerCase(Locale.ROOT))
                 .toList();
     }
 

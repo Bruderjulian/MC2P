@@ -1,10 +1,8 @@
 package dev.mc2p.proxy.http;
 
-import java.io.IOException;
-import java.net.InetAddress;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-
+import dev.mc2p.common.net.Cidr;
+import dev.mc2p.common.ratelimit.TokenBucketRateLimiter;
+import dev.mc2p.common.tokens.TokenManager;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -12,13 +10,12 @@ import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
+import java.io.IOException;
+import java.net.InetAddress;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import dev.mc2p.common.net.Cidr;
-import dev.mc2p.common.ratelimit.TokenBucketRateLimiter;
-import dev.mc2p.common.tokens.TokenManager;
 
 /**
  * Transport enforcement point for the MCP endpoint: IP allowlist, rate limiting, body-size
@@ -43,8 +40,8 @@ public final class AuthFilter implements Filter {
     private final TokenBucketRateLimiter rateLimiter;
     private final int bodyLimitBytes;
 
-    public AuthFilter(TokenManager tokens, List<String> ipAllowlist, TokenBucketRateLimiter rateLimiter,
-            int bodyLimitBytes) {
+    public AuthFilter(
+            TokenManager tokens, List<String> ipAllowlist, TokenBucketRateLimiter rateLimiter, int bodyLimitBytes) {
         this.tokens = tokens;
         this.ipAllowlist = Cidr.parseAll(ipAllowlist);
         this.rateLimiter = rateLimiter;

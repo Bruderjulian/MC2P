@@ -1,13 +1,24 @@
 package dev.mc2p.plugin.facade;
 
+import dev.mc2p.common.validate.Validators;
+import dev.mc2p.plugin.facade.model.Model.BlockInfo;
+import dev.mc2p.plugin.facade.model.Model.CommandResult;
+import dev.mc2p.plugin.facade.model.Model.EntityDetails;
+import dev.mc2p.plugin.facade.model.Model.EntityInfo;
+import dev.mc2p.plugin.facade.model.Model.PlayerDetails;
+import dev.mc2p.plugin.facade.model.Model.PlayerInfo;
+import dev.mc2p.plugin.facade.model.Model.PluginInfo;
+import dev.mc2p.plugin.facade.model.Model.StatsInfo;
+import dev.mc2p.plugin.facade.model.Model.Status;
+import dev.mc2p.plugin.facade.model.Model.Tps;
+import dev.mc2p.plugin.facade.model.Model.WorldInfo;
+import dev.mc2p.plugin.thread.MainThread;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.Callable;
-
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
@@ -24,21 +35,6 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import dev.mc2p.common.validate.Validators;
-import dev.mc2p.plugin.facade.model.Model;
-import dev.mc2p.plugin.facade.model.Model.BlockInfo;
-import dev.mc2p.plugin.facade.model.Model.CommandResult;
-import dev.mc2p.plugin.facade.model.Model.EntityDetails;
-import dev.mc2p.plugin.facade.model.Model.EntityInfo;
-import dev.mc2p.plugin.facade.model.Model.PlayerDetails;
-import dev.mc2p.plugin.facade.model.Model.PlayerInfo;
-import dev.mc2p.plugin.facade.model.Model.PluginInfo;
-import dev.mc2p.plugin.facade.model.Model.Status;
-import dev.mc2p.plugin.facade.model.Model.StatsInfo;
-import dev.mc2p.plugin.facade.model.Model.Tps;
-import dev.mc2p.plugin.facade.model.Model.WorldInfo;
-import dev.mc2p.plugin.thread.MainThread;
 
 /** Bukkit/Paper implementation of {@link ServerFacade}. Every entry point runs on the main thread. */
 public final class PaperServerFacade implements ServerFacade {
@@ -87,7 +83,9 @@ public final class PaperServerFacade implements ServerFacade {
     public Status status() {
         return mainThread.call(() -> {
             double[] tpsArray = safeTps();
-            Tps tps = new Tps(tpsArray.length > 0 ? tpsArray[0] : 20.0, tpsArray.length > 1 ? tpsArray[1] : 20.0,
+            Tps tps = new Tps(
+                    tpsArray.length > 0 ? tpsArray[0] : 20.0,
+                    tpsArray.length > 1 ? tpsArray[1] : 20.0,
                     tpsArray.length > 2 ? tpsArray[2] : 20.0);
             List<String> worlds = new ArrayList<>();
             for (World w : Bukkit.getWorlds()) {
@@ -124,9 +122,14 @@ public final class PaperServerFacade implements ServerFacade {
         return mainThread.call(() -> {
             List<WorldInfo> result = new ArrayList<>();
             for (World w : Bukkit.getWorlds()) {
-                result.add(new WorldInfo(w.getName(), dimensionName(w.getEnvironment()),
-                        new int[] { w.getSpawnLocation().getBlockX(), w.getSpawnLocation().getBlockY(),
-                                w.getSpawnLocation().getBlockZ() },
+                result.add(new WorldInfo(
+                        w.getName(),
+                        dimensionName(w.getEnvironment()),
+                        new int[] {
+                            w.getSpawnLocation().getBlockX(),
+                            w.getSpawnLocation().getBlockY(),
+                            w.getSpawnLocation().getBlockZ()
+                        },
                         w.getLoadedChunks().length));
             }
             return result;
@@ -157,9 +160,17 @@ public final class PaperServerFacade implements ServerFacade {
     }
 
     private static PlayerInfo playerInfoOf(Player p) {
-        return new PlayerInfo(p.getUniqueId(), p.getName(), safePing(p),
-                p.getGameMode().name().toLowerCase(Locale.ROOT), p.getHealth(), p.getFoodLevel(), p.getLevel(),
-                p.getLocation().getX(), p.getLocation().getY(), p.getLocation().getZ(),
+        return new PlayerInfo(
+                p.getUniqueId(),
+                p.getName(),
+                safePing(p),
+                p.getGameMode().name().toLowerCase(Locale.ROOT),
+                p.getHealth(),
+                p.getFoodLevel(),
+                p.getLevel(),
+                p.getLocation().getX(),
+                p.getLocation().getY(),
+                p.getLocation().getZ(),
                 p.getWorld().getName());
     }
 
@@ -172,7 +183,8 @@ public final class PaperServerFacade implements ServerFacade {
             }
             List<String> effects = new ArrayList<>();
             for (PotionEffect effect : p.getActivePotionEffects()) {
-                effects.add(effect.getType().getKey().getKey() + ":" + effect.getAmplifier() + ":" + effect.getDuration());
+                effects.add(
+                        effect.getType().getKey().getKey() + ":" + effect.getAmplifier() + ":" + effect.getDuration());
             }
             return new PlayerDetails(playerInfoOf(p), effects, p.isOp());
         });
@@ -205,7 +217,8 @@ public final class PaperServerFacade implements ServerFacade {
         return mainThread.call(() -> {
             World w = requireWorld(worldKey);
             if (y < w.getMinHeight() || y > w.getMaxHeight()) {
-                throw new FacadeException("y out of world height range [" + w.getMinHeight() + ", " + w.getMaxHeight() + "]");
+                throw new FacadeException(
+                        "y out of world height range [" + w.getMinHeight() + ", " + w.getMaxHeight() + "]");
             }
             Block b = w.getBlockAt(x, y, z);
             return blockInfoOf(w, b, x, y, z);
@@ -233,8 +246,8 @@ public final class PaperServerFacade implements ServerFacade {
         });
 
         // Phase 2 (off-thread): read blocks from the captured snapshots only.
-        int volume = (int) (Math.min(x2 - x1 + 1L, 2000L) * Math.min(y2 - y1 + 1L, 400L)
-                * Math.min(z2 - z1 + 1L, 2000L));
+        int volume =
+                (int) (Math.min(x2 - x1 + 1L, 2000L) * Math.min(y2 - y1 + 1L, 400L) * Math.min(z2 - z1 + 1L, 2000L));
         if (volume > cap) {
             volume = cap;
         }
@@ -253,10 +266,17 @@ public final class PaperServerFacade implements ServerFacade {
                     String blockData = snapshot.getBlockData(localX, y, localZ).getAsString();
                     int light = snapshot.getBlockEmittedLight(localX, y, localZ);
                     int skyLight = snapshot.getBlockSkyLight(localX, y, localZ);
-                    result.add(new BlockInfo(worldKey, x, y, z,
-                            material.getKey().getKey(), blockData,
+                    result.add(new BlockInfo(
+                            worldKey,
+                            x,
+                            y,
+                            z,
+                            material.getKey().getKey(),
+                            blockData,
                             snapshotBiomeName(snapshot, localX, y, localZ),
-                            light, skyLight, true));
+                            light,
+                            skyLight,
+                            true));
                 }
             }
         }
@@ -273,8 +293,13 @@ public final class PaperServerFacade implements ServerFacade {
                 if (type != null && !type.isBlank() && !entityType.equalsIgnoreCase(type)) {
                     continue;
                 }
-                all.add(new EntityInfo(e.getUniqueId(), entityType,
-                        e.getLocation().getX(), e.getLocation().getY(), e.getLocation().getZ(), worldKey,
+                all.add(new EntityInfo(
+                        e.getUniqueId(),
+                        entityType,
+                        e.getLocation().getX(),
+                        e.getLocation().getY(),
+                        e.getLocation().getZ(),
+                        worldKey,
                         e instanceof LivingEntity le ? le.getHealth() : -1,
                         entityDisplayName(e)));
             }
@@ -297,10 +322,18 @@ public final class PaperServerFacade implements ServerFacade {
                         for (Entity p : e.getPassengers()) {
                             passengers.add(p.getType().getKey().getKey());
                         }
-                        String vehicle = e.getVehicle() == null ? null : e.getVehicle().getType().getKey().getKey();
-                        EntityInfo base = new EntityInfo(e.getUniqueId(), e.getType().getKey().getKey(),
-                                e.getLocation().getX(), e.getLocation().getY(), e.getLocation().getZ(), w.getName(),
-                                e instanceof LivingEntity le ? le.getHealth() : -1, entityDisplayName(e));
+                        String vehicle = e.getVehicle() == null
+                                ? null
+                                : e.getVehicle().getType().getKey().getKey();
+                        EntityInfo base = new EntityInfo(
+                                e.getUniqueId(),
+                                e.getType().getKey().getKey(),
+                                e.getLocation().getX(),
+                                e.getLocation().getY(),
+                                e.getLocation().getZ(),
+                                w.getName(),
+                                e instanceof LivingEntity le ? le.getHealth() : -1,
+                                entityDisplayName(e));
                         return new EntityDetails(base, passengers, vehicle);
                     }
                 }
@@ -402,8 +435,7 @@ public final class PaperServerFacade implements ServerFacade {
         mainThread.call(() -> {
             OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
             String name = op.getName();
-            Bukkit.getBanList(org.bukkit.BanList.Type.NAME)
-                    .pardon(name == null ? uuid.toString() : name);
+            Bukkit.getBanList(org.bukkit.BanList.Type.NAME).pardon(name == null ? uuid.toString() : name);
             return null;
         });
     }
@@ -487,12 +519,16 @@ public final class PaperServerFacade implements ServerFacade {
         Bukkit.broadcastMessage(stripFormatting(message));
         for (int i = countdownSeconds; i > 0; i--) {
             int remaining = i;
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (remaining <= 5 || remaining % 10 == 0) {
-                    Bukkit.broadcastMessage(stripFormatting("Server " + (restart ? "restarting" : "stopping")
-                            + " in " + remaining + "s"));
-                }
-            }, (countdownSeconds - i) * 20L + 1);
+            Bukkit.getScheduler()
+                    .runTaskLater(
+                            plugin,
+                            () -> {
+                                if (remaining <= 5 || remaining % 10 == 0) {
+                                    Bukkit.broadcastMessage(stripFormatting("Server "
+                                            + (restart ? "restarting" : "stopping") + " in " + remaining + "s"));
+                                }
+                            },
+                            (countdownSeconds - i) * 20L + 1);
         }
         Bukkit.getScheduler().runTaskLater(plugin, () -> doShutdown(restart), countdownSeconds * 20L + 20L);
     }
@@ -537,9 +573,9 @@ public final class PaperServerFacade implements ServerFacade {
     private static double[] safeTps() {
         try {
             double[] tps = Bukkit.getTPS();
-            return tps == null ? new double[] { 20.0 } : tps;
+            return tps == null ? new double[] {20.0} : tps;
         } catch (Throwable t) {
-            return new double[] { 20.0 };
+            return new double[] {20.0};
         }
     }
 
@@ -606,8 +642,17 @@ public final class PaperServerFacade implements ServerFacade {
             sky = b.getLightFromSky();
         } catch (Throwable ignored) {
         }
-        return new BlockInfo(w.getName(), x, y, z, b.getType().getKey().getKey(), b.getBlockData().getAsString(),
-                biome, light, sky, w.isChunkLoaded(x >> 4, z >> 4));
+        return new BlockInfo(
+                w.getName(),
+                x,
+                y,
+                z,
+                b.getType().getKey().getKey(),
+                b.getBlockData().getAsString(),
+                biome,
+                light,
+                sky,
+                w.isChunkLoaded(x >> 4, z >> 4));
     }
 
     private static String safeBiomeName(org.bukkit.ChunkSnapshot snapshot, int x, int y, int z, World w) {
@@ -615,7 +660,9 @@ public final class PaperServerFacade implements ServerFacade {
             return snapshot.getBiome(x, y, z).getKey().getKey();
         } catch (Throwable t) {
             try {
-                return w.getBiome(snapshot.getX() * 16 + x, y, snapshot.getZ() * 16 + z).getKey().getKey();
+                return w.getBiome(snapshot.getX() * 16 + x, y, snapshot.getZ() * 16 + z)
+                        .getKey()
+                        .getKey();
             } catch (Throwable t2) {
                 return "unknown";
             }
@@ -754,8 +801,8 @@ public final class PaperServerFacade implements ServerFacade {
         }
 
         @Override
-        public org.bukkit.permissions.PermissionAttachment addAttachment(Plugin plugin, String name, boolean value,
-                int ticks) {
+        public org.bukkit.permissions.PermissionAttachment addAttachment(
+                Plugin plugin, String name, boolean value, int ticks) {
             return delegate.addAttachment(plugin, name, value, ticks);
         }
 
@@ -800,7 +847,8 @@ public final class PaperServerFacade implements ServerFacade {
         }
 
         @Override
-        public void abandonConversation(org.bukkit.conversations.Conversation conversation,
+        public void abandonConversation(
+                org.bukkit.conversations.Conversation conversation,
                 org.bukkit.conversations.ConversationAbandonedEvent details) {
             delegate.abandonConversation(conversation, details);
         }

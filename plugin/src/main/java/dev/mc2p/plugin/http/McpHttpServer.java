@@ -1,25 +1,22 @@
 package dev.mc2p.plugin.http;
 
+import dev.mc2p.common.http.HttpEndpointConfig;
+import dev.mc2p.common.ratelimit.TokenBucketRateLimiter;
+import dev.mc2p.common.tokens.TokenManager;
+import jakarta.servlet.DispatcherType;
 import java.nio.file.Path;
 import java.util.EnumSet;
-
-import jakarta.servlet.DispatcherType;
-
+import org.eclipse.jetty.ee10.servlet.FilterHolder;
+import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
+import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.eclipse.jetty.server.HttpConfiguration;
 import org.eclipse.jetty.server.HttpConnectionFactory;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.ServerConnector;
 import org.eclipse.jetty.server.SslConnectionFactory;
-import org.eclipse.jetty.ee10.servlet.FilterHolder;
-import org.eclipse.jetty.ee10.servlet.ServletContextHandler;
-import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import dev.mc2p.common.http.HttpEndpointConfig;
-import dev.mc2p.common.ratelimit.TokenBucketRateLimiter;
-import dev.mc2p.common.tokens.TokenManager;
 
 /**
  * Owns the single TLS HTTP port for the standalone topology: the MCP endpoint (auth-gated)
@@ -34,8 +31,13 @@ public final class McpHttpServer {
     private final ServletContextHandler context;
     private final String endpoint;
 
-    public McpHttpServer(HttpEndpointConfig http, TokenManager tokens, java.util.List<String> ipAllowlist,
-            TokenBucketRateLimiter.Config rateLimit, Path dataDir, String serverId) {
+    public McpHttpServer(
+            HttpEndpointConfig http,
+            TokenManager tokens,
+            java.util.List<String> ipAllowlist,
+            TokenBucketRateLimiter.Config rateLimit,
+            Path dataDir,
+            String serverId) {
         this.endpoint = http.endpoint();
 
         this.server = new Server();
@@ -56,18 +58,20 @@ public final class McpHttpServer {
         String tlsMode = http.tlsMode();
         String keystorePath = http.keystore();
         String keystorePasswordEnv = http.passwordEnv();
-        boolean ssl = switch (tlsMode) {
-            case "selfsigned", "keystore" -> true;
-            case "none-behind-proxy" -> {
-                log.warn("TLS mode 'none-behind-proxy': assuming the host panel terminates TLS in front of this port");
-                yield false;
-            }
-            default -> {
-                log.warn("!!!!!!!!!! TLS DISABLED (tls.mode=none). The MCP endpoint is served in plaintext. "
-                        + "Use selfsigned or a host proxy in production. !!!!!!!!!!");
-                yield false;
-            }
-        };
+        boolean ssl =
+                switch (tlsMode) {
+                    case "selfsigned", "keystore" -> true;
+                    case "none-behind-proxy" -> {
+                        log.warn(
+                                "TLS mode 'none-behind-proxy': assuming the host panel terminates TLS in front of this port");
+                        yield false;
+                    }
+                    default -> {
+                        log.warn("!!!!!!!!!! TLS DISABLED (tls.mode=none). The MCP endpoint is served in plaintext. "
+                                + "Use selfsigned or a host proxy in production. !!!!!!!!!!");
+                        yield false;
+                    }
+                };
 
         if (!ssl) {
             ServerConnector plain = new ServerConnector(server);
@@ -121,8 +125,10 @@ public final class McpHttpServer {
     public void start() {
         try {
             server.start();
-            log.info("MC2P MCP endpoint listening on {}:{} (TLS enabled per config)",
-                    mcpBind(), server.getURI().getPort());
+            log.info(
+                    "MC2P MCP endpoint listening on {}:{} (TLS enabled per config)",
+                    mcpBind(),
+                    server.getURI().getPort());
         } catch (Exception e) {
             throw new IllegalStateException("failed to start HTTP server", e);
         }

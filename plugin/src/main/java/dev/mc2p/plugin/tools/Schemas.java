@@ -7,8 +7,7 @@ import java.util.Map;
 /** Builders for JSON Schema 2020-12 input schemas used by MCP tool definitions. */
 public final class Schemas {
 
-    private Schemas() {
-    }
+    private Schemas() {}
 
     public static Map<String, Object> object(Map<String, Object> properties, List<String> required) {
         Map<String, Object> schema = new LinkedHashMap<>();

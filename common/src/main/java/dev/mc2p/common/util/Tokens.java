@@ -13,8 +13,7 @@ public final class Tokens {
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final int TOKEN_BYTES = 32; // 256-bit
 
-    private Tokens() {
-    }
+    private Tokens() {}
 
     /**
      * Generates a fresh 256-bit random token, URL-safe base64 encoded.
@@ -59,7 +58,8 @@ public final class Tokens {
         if (a == null || b == null) {
             return false;
         }
-        return MessageDigest.isEqual(a.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+        return MessageDigest.isEqual(
+                a.getBytes(java.nio.charset.StandardCharsets.UTF_8),
                 b.getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 }

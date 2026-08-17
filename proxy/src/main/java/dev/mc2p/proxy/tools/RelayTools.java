@@ -1,28 +1,24 @@
 package dev.mc2p.proxy.tools;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-
-import io.modelcontextprotocol.common.McpTransportContext;
-import io.modelcontextprotocol.server.McpServerFeatures;
-import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification;
-import io.modelcontextprotocol.spec.McpSchema;
-import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
-
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.ServerConnection;
-
 import dev.mc2p.common.audit.AuditLogger;
 import dev.mc2p.common.json.Json;
 import dev.mc2p.common.role.Role;
 import dev.mc2p.common.validate.Validators;
 import dev.mc2p.proxy.http.McpRequestContextExtractor;
 import dev.mc2p.proxy.rpc.BackendClient;
+import io.modelcontextprotocol.common.McpTransportContext;
+import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification;
+import io.modelcontextprotocol.spec.McpSchema;
+import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * The proxy tool set. Backend tools are re-exposed with a {@code server} parameter and
@@ -54,14 +50,12 @@ public final class RelayTools {
             boolean serverRequired,
             String description,
             Map<String, Object> baseSchema,
-            List<String> requiredParams) {
-    }
+            List<String> requiredParams) {}
 
-    private RelayTools() {
-    }
+    private RelayTools() {}
 
-    public static List<SyncToolSpecification> build(BackendClient client, AuditLogger audit, String proxyServerId,
-            ProxyServer proxy) {
+    public static List<SyncToolSpecification> build(
+            BackendClient client, AuditLogger audit, String proxyServerId, ProxyServer proxy) {
         List<SyncToolSpecification> specs = new ArrayList<>();
         for (ToolDef def : CATALOG) {
             specs.add(spec(def, client, audit, proxyServerId, proxy));
@@ -74,28 +68,40 @@ public final class RelayTools {
         return CATALOG.size();
     }
 
-    private static SyncToolSpecification spec(ToolDef def, BackendClient client, AuditLogger audit,
-            String proxyServerId, ProxyServer proxy) {
+    private static SyncToolSpecification spec(
+            ToolDef def, BackendClient client, AuditLogger audit, String proxyServerId, ProxyServer proxy) {
         McpSchema.Tool tool = McpSchema.Tool.builder(def.name(), buildSchema(def))
                 .description(def.description())
                 .build();
         return SyncToolSpecification.builder()
                 .tool(tool)
-                .callHandler((exchange, request) -> invoke(def, request.arguments(), authFrom(exchange.transportContext()),
-                        client, audit, proxyServerId, proxy))
+                .callHandler((exchange, request) -> invoke(
+                        def,
+                        request.arguments(),
+                        authFrom(exchange.transportContext()),
+                        client,
+                        audit,
+                        proxyServerId,
+                        proxy))
                 .build();
     }
 
-    private static CallToolResult invoke(ToolDef def, Map<String, Object> args, AuthContext auth,
-            BackendClient client, AuditLogger audit, String proxyServerId, ProxyServer proxy) {
+    private static CallToolResult invoke(
+            ToolDef def,
+            Map<String, Object> args,
+            AuthContext auth,
+            BackendClient client,
+            AuditLogger audit,
+            String proxyServerId,
+            ProxyServer proxy) {
         Map<String, Object> params = args == null ? Map.of() : args;
 
         if (auth.role() == null) {
             return ToolResult.error("unauthenticated");
         }
         if (!auth.role().can(def.requiredRole())) {
-            return ToolResult.error("tool '" + def.name() + "' requires role " + def.requiredRole() + " (client: "
-                    + auth.role() + ")");
+            return ToolResult.error(
+                    "tool '" + def.name() + "' requires role " + def.requiredRole() + " (client: " + auth.role() + ")");
         }
         if (def.destructive() && !Boolean.TRUE.equals(params.get("confirm"))) {
             return ToolResult.error("tool '" + def.name() + "' is destructive and requires confirm: true");
@@ -103,7 +109,12 @@ public final class RelayTools {
         if (def.destructive()) {
             // Fail closed: the relay must not proceed if the audit entry cannot be written.
             try {
-                audit.log(auth.role(), auth.tokenId(), proxyServerId, def.name(), "relay",
+                audit.log(
+                        auth.role(),
+                        auth.tokenId(),
+                        proxyServerId,
+                        def.name(),
+                        "relay",
                         Json.toJson(redactSecrets(params)));
             } catch (RuntimeException e) {
                 return ToolResult.error("audit write failed; relay refused: " + e.getMessage());
@@ -124,8 +135,8 @@ public final class RelayTools {
         relayParams.remove("server");
 
         if (targets.size() == 1) {
-            Optional<Map<String, Object>> response = client.call(targets.get(0), def.backendMethod(),
-                    auth.role().toString(), relayParams);
+            Optional<Map<String, Object>> response =
+                    client.call(targets.get(0), def.backendMethod(), auth.role().toString(), relayParams);
             if (response.isEmpty()) {
                 return ToolResult.error("backend " + targets.get(0) + " unreachable or timed out");
             }
@@ -139,8 +150,8 @@ public final class RelayTools {
         Map<String, Object> servers = new LinkedHashMap<>();
         Map<String, Object> errors = new LinkedHashMap<>();
         for (String serverId : targets) {
-            Optional<Map<String, Object>> response = client.call(serverId, def.backendMethod(),
-                    auth.role().toString(), relayParams);
+            Optional<Map<String, Object>> response =
+                    client.call(serverId, def.backendMethod(), auth.role().toString(), relayParams);
             if (response.isEmpty()) {
                 errors.put(serverId, "unreachable or timed out");
                 continue;
@@ -160,12 +171,11 @@ public final class RelayTools {
         return ToolResult.success(result);
     }
 
-    private record Route(List<String> targets, String error) {
-    }
+    private record Route(List<String> targets, String error) {}
 
     /** @return resolved target serverIds, or a route carrying the rejection reason. */
-    private static Route resolveTargets(ToolDef def, BackendClient client, ProxyServer proxy,
-            Map<String, Object> args) {
+    private static Route resolveTargets(
+            ToolDef def, BackendClient client, ProxyServer proxy, Map<String, Object> args) {
         String server = string(args.get("server"));
         if (server != null && !server.isBlank()) {
             if ("*".equals(server)) {
@@ -248,7 +258,8 @@ public final class RelayTools {
         Object role = context.get(McpRequestContextExtractor.KEY_ROLE);
         Object tokenId = context.get(McpRequestContextExtractor.KEY_TOKEN_ID);
         Object remoteIp = context.get(McpRequestContextExtractor.KEY_REMOTE_IP);
-        return new AuthContext(role instanceof Role r ? r : null,
+        return new AuthContext(
+                role instanceof Role r ? r : null,
                 tokenId == null ? "" : String.valueOf(tokenId),
                 remoteIp == null ? "" : String.valueOf(remoteIp),
                 "http");
@@ -287,46 +298,126 @@ public final class RelayTools {
         return copy;
     }
 
-    private static ToolDef relay(String name, Role role, boolean destructive, boolean playerTool,
-            boolean broadcastable, boolean serverRequired, String description, Map<String, Object> properties,
+    private static ToolDef relay(
+            String name,
+            Role role,
+            boolean destructive,
+            boolean playerTool,
+            boolean broadcastable,
+            boolean serverRequired,
+            String description,
+            Map<String, Object> properties,
             List<String> required) {
-        return new ToolDef(name, name, role, destructive, playerTool, broadcastable, serverRequired, description,
-                Schemas.object(properties, required), required);
+        return new ToolDef(
+                name,
+                name,
+                role,
+                destructive,
+                playerTool,
+                broadcastable,
+                serverRequired,
+                description,
+                Schemas.object(properties, required),
+                required);
     }
 
     private static ToolDef fleetStatus() {
-        return new ToolDef("fleet_status", "server_status", Role.READER, false, false, true, false,
+        return new ToolDef(
+                "fleet_status",
+                "server_status",
+                Role.READER,
+                false,
+                false,
+                true,
+                false,
                 "Queries health status from all connected backends and aggregates the results.",
-                Schemas.object(Map.of(), List.of()), List.of());
+                Schemas.object(Map.of(), List.of()),
+                List.of());
     }
 
     private static ToolDef playerLocateDef() {
-        return new ToolDef("player_locate", "player_locate", Role.READER, false, false, false, false,
+        return new ToolDef(
+                "player_locate",
+                "player_locate",
+                Role.READER,
+                false,
+                false,
+                false,
+                false,
                 "Locates an online player and reports their current backend server.",
-                Schemas.object(Map.of("uuid", Schemas.str("Player UUID")), List.of("uuid")), List.of("uuid"));
+                Schemas.object(Map.of("uuid", Schemas.str("Player UUID")), List.of("uuid")),
+                List.of("uuid"));
     }
 
     private static final List<ToolDef> CATALOG = List.of(
             // ---- read tools ----
-            relay("server_status", Role.READER, false, false, true, false,
+            relay(
+                    "server_status",
+                    Role.READER,
+                    false,
+                    false,
+                    true,
+                    false,
                     "Server health: TPS, tick, uptime, online players, worlds, plugins, heap, restart strategy.",
-                    Map.of(), List.of()),
-            relay("world_list", Role.READER, false, false, true, true,
+                    Map.of(),
+                    List.of()),
+            relay(
+                    "world_list",
+                    Role.READER,
+                    false,
+                    false,
+                    true,
+                    true,
                     "Lists worlds with dimension, spawn and loaded-chunk counts.",
-                    Map.of(), List.of()),
-            relay("plugin_list", Role.READER, false, false, true, true,
+                    Map.of(),
+                    List.of()),
+            relay(
+                    "plugin_list",
+                    Role.READER,
+                    false,
+                    false,
+                    true,
+                    true,
                     "Lists loaded plugins with version and enabled state.",
-                    Map.of(), List.of()),
-            relay("player_list", Role.READER, false, false, true, true,
+                    Map.of(),
+                    List.of()),
+            relay(
+                    "player_list",
+                    Role.READER,
+                    false,
+                    false,
+                    true,
+                    true,
                     "Lists online players with uuid, name, ping, gamemode, health, food, level and location.",
-                    Map.of(), List.of()),
-            relay("player_info", Role.READER, false, true, true, false,
+                    Map.of(),
+                    List.of()),
+            relay(
+                    "player_info",
+                    Role.READER,
+                    false,
+                    true,
+                    true,
+                    false,
                     "Detailed info for one player by UUID: effects, dimension, operator status.",
-                    Map.of("uuid", Schemas.str("Player UUID")), List.of("uuid")),
-            relay("player_stats", Role.READER, false, true, true, false,
+                    Map.of("uuid", Schemas.str("Player UUID")),
+                    List.of("uuid")),
+            relay(
+                    "player_stats",
+                    Role.READER,
+                    false,
+                    true,
+                    true,
+                    false,
                     "Bukkit statistics snapshot for one player by UUID.",
-                    Map.of("uuid", Schemas.str("Player UUID")), List.of("uuid")),
-            relay("block_get", Role.READER, false, false, true, true,
+                    Map.of("uuid", Schemas.str("Player UUID")),
+                    List.of("uuid")),
+            relay(
+                    "block_get",
+                    Role.READER,
+                    false,
+                    false,
+                    true,
+                    true,
                     "Reads a single block: material, block data, biome, light levels, chunk loaded.",
                     Map.of(
                             "world", Schemas.str("World key (name)"),
@@ -334,7 +425,13 @@ public final class RelayTools {
                             "y", Schemas.integer("Y coordinate"),
                             "z", Schemas.integer("Z coordinate")),
                     List.of("world", "x", "y", "z")),
-            relay("region_get", Role.READER, false, false, true, true,
+            relay(
+                    "region_get",
+                    Role.READER,
+                    false,
+                    false,
+                    true,
+                    true,
                     "Bounded block dump for a region.",
                     Map.of(
                             "world", Schemas.str("World key (name)"),
@@ -345,7 +442,13 @@ public final class RelayTools {
                             "y2", Schemas.integer("Max Y"),
                             "z2", Schemas.integer("Max Z")),
                     List.of("world", "x1", "y1", "z1", "x2", "y2", "z2")),
-            relay("entity_list", Role.READER, false, false, true, true,
+            relay(
+                    "entity_list",
+                    Role.READER,
+                    false,
+                    false,
+                    true,
+                    true,
                     "Lists entities in a world, optionally filtered by type, paginated.",
                     Map.of(
                             "world", Schemas.str("World key (name)"),
@@ -353,26 +456,51 @@ public final class RelayTools {
                             "limit", Schemas.integer("Max results (<=100)"),
                             "page", Schemas.integer("Page number (0-based)")),
                     List.of("world")),
-            relay("entity_info", Role.READER, false, false, true, true,
+            relay(
+                    "entity_info",
+                    Role.READER,
+                    false,
+                    false,
+                    true,
+                    true,
                     "Detailed entity info by UUID: type, position, health, name, vehicle and passengers.",
-                    Map.of("uuid", Schemas.str("Entity UUID")), List.of("uuid")),
+                    Map.of("uuid", Schemas.str("Entity UUID")),
+                    List.of("uuid")),
 
             // ---- player-targeted ops ----
-            relay("player_message", Role.OPS, false, true, false, false,
+            relay(
+                    "player_message",
+                    Role.OPS,
+                    false,
+                    true,
+                    false,
+                    false,
                     "Sends a chat message to a player as the console. Formatting codes are stripped unless allowFormatting is true.",
                     Map.of(
                             "uuid", Schemas.str("Player UUID"),
                             "text", Schemas.str("Message text (<=256 chars)"),
                             "allowFormatting", Schemas.bool("Allow Minecraft formatting codes")),
                     List.of("uuid", "text")),
-            relay("player_kick", Role.OPS, true, true, false, false,
+            relay(
+                    "player_kick",
+                    Role.OPS,
+                    true,
+                    true,
+                    false,
+                    false,
                     "Kicks a player with an optional reason.",
                     Map.of(
                             "uuid", Schemas.str("Player UUID"),
                             "reason", Schemas.str("Optional reason"),
                             "confirm", Schemas.confirmSchema()),
                     List.of("uuid", "confirm")),
-            relay("player_teleport", Role.OPS, false, true, false, false,
+            relay(
+                    "player_teleport",
+                    Role.OPS,
+                    false,
+                    true,
+                    false,
+                    false,
                     "Teleports a player to coordinates in a world, or to another player.",
                     Map.of(
                             "uuid", Schemas.str("Player UUID"),
@@ -382,13 +510,25 @@ public final class RelayTools {
                             "y", Schemas.integer("Y coordinate"),
                             "z", Schemas.integer("Z coordinate")),
                     List.of("uuid")),
-            relay("player_gamemode", Role.OPS, false, true, false, false,
+            relay(
+                    "player_gamemode",
+                    Role.OPS,
+                    false,
+                    true,
+                    false,
+                    false,
                     "Sets a player's gamemode.",
                     Map.of(
                             "uuid", Schemas.str("Player UUID"),
                             "gamemode", Schemas.str("survival|creative|adventure|spectator")),
                     List.of("uuid", "gamemode")),
-            relay("player_effect", Role.OPS, false, true, false, false,
+            relay(
+                    "player_effect",
+                    Role.OPS,
+                    false,
+                    true,
+                    false,
+                    false,
                     "Applies a potion effect to a player.",
                     Map.of(
                             "uuid", Schemas.str("Player UUID"),
@@ -398,23 +538,48 @@ public final class RelayTools {
                     List.of("uuid", "effect", "durationSeconds")),
 
             // ---- admin ----
-            relay("player_ban", Role.ADMIN, true, true, false, false,
+            relay(
+                    "player_ban",
+                    Role.ADMIN,
+                    true,
+                    true,
+                    false,
+                    false,
                     "Bans a player by UUID with an optional reason.",
                     Map.of(
                             "uuid", Schemas.str("Player UUID"),
                             "reason", Schemas.str("Optional reason"),
                             "confirm", Schemas.confirmSchema()),
                     List.of("uuid", "confirm")),
-            relay("player_unban", Role.ADMIN, true, true, false, false,
+            relay(
+                    "player_unban",
+                    Role.ADMIN,
+                    true,
+                    true,
+                    false,
+                    false,
                     "Unbans a player by UUID.",
                     Map.of(
                             "uuid", Schemas.str("Player UUID"),
                             "confirm", Schemas.confirmSchema()),
                     List.of("uuid", "confirm")),
-            relay("player_whitelist_add", Role.ADMIN, false, true, false, false,
+            relay(
+                    "player_whitelist_add",
+                    Role.ADMIN,
+                    false,
+                    true,
+                    false,
+                    false,
                     "Adds a player to the whitelist by UUID.",
-                    Map.of("uuid", Schemas.str("Player UUID")), List.of("uuid")),
-            relay("player_whitelist_remove", Role.ADMIN, true, true, false, false,
+                    Map.of("uuid", Schemas.str("Player UUID")),
+                    List.of("uuid")),
+            relay(
+                    "player_whitelist_remove",
+                    Role.ADMIN,
+                    true,
+                    true,
+                    false,
+                    false,
                     "Removes a player from the whitelist by UUID.",
                     Map.of(
                             "uuid", Schemas.str("Player UUID"),
@@ -422,13 +587,25 @@ public final class RelayTools {
                     List.of("uuid", "confirm")),
 
             // ---- control ----
-            relay("command_execute", Role.OPS, true, false, false, true,
+            relay(
+                    "command_execute",
+                    Role.OPS,
+                    true,
+                    false,
+                    false,
+                    true,
                     "Executes a server console command, gated by the backend's per-role allowlist.",
                     Map.of(
                             "command", Schemas.str("Console command to run (no leading slash)"),
                             "confirm", Schemas.confirmSchema()),
                     List.of("command", "confirm")),
-            relay("block_set", Role.ADMIN, true, false, false, true,
+            relay(
+                    "block_set",
+                    Role.ADMIN,
+                    true,
+                    false,
+                    false,
+                    true,
                     "Sets a single block from the backend's curated material allowlist.",
                     Map.of(
                             "world", Schemas.str("World key (name)"),
@@ -438,14 +615,26 @@ public final class RelayTools {
                             "material", Schemas.str("Block material (registry key)"),
                             "confirm", Schemas.confirmSchema()),
                     List.of("world", "x", "y", "z", "material", "confirm")),
-            relay("server_restart", Role.ADMIN, true, false, false, true,
+            relay(
+                    "server_restart",
+                    Role.ADMIN,
+                    true,
+                    false,
+                    false,
+                    true,
                     "Restarts a specific backend server using its configured restart strategy.",
                     Map.of(
                             "announce", Schemas.str("Optional broadcast message"),
                             "countdownSeconds", Schemas.integer("Countdown before restart (default 10)"),
                             "confirm", Schemas.confirmSchema()),
                     List.of("confirm")),
-            relay("server_stop", Role.ADMIN, true, false, false, true,
+            relay(
+                    "server_stop",
+                    Role.ADMIN,
+                    true,
+                    false,
+                    false,
+                    true,
                     "Stops a specific backend server gracefully.",
                     Map.of(
                             "announce", Schemas.str("Optional broadcast message"),

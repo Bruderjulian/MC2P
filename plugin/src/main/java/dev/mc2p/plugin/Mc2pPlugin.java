@@ -1,19 +1,5 @@
 package dev.mc2p.plugin;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.EnumMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
-
-import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.plugin.java.JavaPlugin;
-
-import io.modelcontextprotocol.server.McpSyncServer;
-import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import dev.mc2p.common.audit.AuditLogger;
 import dev.mc2p.common.config.ConfigSupport;
 import dev.mc2p.common.http.HttpEndpointConfig;
@@ -30,6 +16,16 @@ import dev.mc2p.plugin.tools.ReadTools;
 import dev.mc2p.plugin.tools.ToolInvoker;
 import dev.mc2p.plugin.tools.ToolRegistry;
 import dev.mc2p.plugin.tools.WriteTools;
+import io.modelcontextprotocol.server.McpSyncServer;
+import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.EnumMap;
+import java.util.Map;
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.plugin.java.JavaPlugin;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The MC2P backend Paper plugin. Serves as a standalone MCP server (single TLS port) or,
@@ -90,7 +86,9 @@ public final class Mc2pPlugin extends JavaPlugin {
         tokens = new TokenManager(dataDir.resolve("tokens.yml"));
         tokens.updateFromConfig(resolveTokens(config));
 
-        audit = new AuditLogger(dataDir.resolve(config.audit().file()), config.audit().maxMb(),
+        audit = new AuditLogger(
+                dataDir.resolve(config.audit().file()),
+                config.audit().maxMb(),
                 config.audit().maxFiles());
 
         mainThread = new MainThread(this, config.proxy().timeoutMs());
@@ -112,30 +110,49 @@ public final class Mc2pPlugin extends JavaPlugin {
         BackendConfig.McpSection mcp = config.mcp();
         BackendConfig.McpSection.TlsSection tls = mcp.tls();
         HttpServletStreamableServerTransportProvider transport = McpServerBootstrap.transport(mcp.endpoint());
-        mcpServer = McpServerBootstrap.build(registry, facade, invoker, transport, getPluginMeta().getVersion(),
-                mainThread);
+        mcpServer = McpServerBootstrap.build(
+                registry, facade, invoker, transport, getPluginMeta().getVersion(), mainThread);
 
-        HttpEndpointConfig http = new HttpEndpointConfig(mcp.bind(), mcp.port(), mcp.endpoint(), mcp.bodyLimitBytes(),
-                tls.mode(), tls.keystore(), tls.passwordEnv());
-        httpServer = new McpHttpServer(http, tokens, config.auth().ipAllowlist(), config.auth().rateLimit(), dataDir,
-                config.serverId());
+        HttpEndpointConfig http = new HttpEndpointConfig(
+                mcp.bind(),
+                mcp.port(),
+                mcp.endpoint(),
+                mcp.bodyLimitBytes(),
+                tls.mode(),
+                tls.keystore(),
+                tls.passwordEnv());
+        httpServer = new McpHttpServer(
+                http, tokens, config.auth().ipAllowlist(), config.auth().rateLimit(), dataDir, config.serverId());
         httpServer.registerServlet(transport, mcp.endpoint());
-        httpServer.registerServlet(new HealthzServlet(config.serverId(), getPluginMeta().getVersion(), mode,
-                config.restartStrategy()), "/healthz");
+        httpServer.registerServlet(
+                new HealthzServlet(config.serverId(), getPluginMeta().getVersion(), mode, config.restartStrategy()),
+                "/healthz");
         httpServer.start();
     }
 
     private void startBackendMode(Path dataDir) {
-        String secret = ConfigSupport.resolveSecret("env:" + config.proxy().secretEnv(), dataDir) == null ? null
-                : ConfigSupport.resolveSecret("env:" + config.proxy().secretEnv(), dataDir).value();
+        String secret = ConfigSupport.resolveSecret("env:" + config.proxy().secretEnv(), dataDir) == null
+                ? null
+                : ConfigSupport.resolveSecret("env:" + config.proxy().secretEnv(), dataDir)
+                        .value();
         if (secret == null || secret.isBlank()) {
-            log.warn("MC2P backend mode: proxy secret ({}) is not set - the proxy will not be able to authenticate",
+            log.warn(
+                    "MC2P backend mode: proxy secret ({}) is not set - the proxy will not be able to authenticate",
                     config.proxy().secretEnv());
         }
-        rpcServer = new BackendRpcServer(this, invoker, config.serverId(), config.proxy().rpcChannel(), secret,
+        rpcServer = new BackendRpcServer(
+                this,
+                invoker,
+                config.serverId(),
+                config.proxy().rpcChannel(),
+                secret,
                 config.proxy().timeoutMs());
-        getServer().getMessenger().registerIncomingPluginChannel(this, config.proxy().rpcChannel(), rpcServer);
-        getServer().getMessenger().registerOutgoingPluginChannel(this, config.proxy().rpcChannel());
+        getServer()
+                .getMessenger()
+                .registerIncomingPluginChannel(this, config.proxy().rpcChannel(), rpcServer);
+        getServer()
+                .getMessenger()
+                .registerOutgoingPluginChannel(this, config.proxy().rpcChannel());
         log.info("MC2P backend registered on plugin channel {}", config.proxy().rpcChannel());
     }
 
@@ -149,8 +166,12 @@ public final class Mc2pPlugin extends JavaPlugin {
             mcpServer = null;
         }
         if (rpcServer != null) {
-            getServer().getMessenger().unregisterIncomingPluginChannel(this, config.proxy().rpcChannel());
-            getServer().getMessenger().unregisterOutgoingPluginChannel(this, config.proxy().rpcChannel());
+            getServer()
+                    .getMessenger()
+                    .unregisterIncomingPluginChannel(this, config.proxy().rpcChannel());
+            getServer()
+                    .getMessenger()
+                    .unregisterOutgoingPluginChannel(this, config.proxy().rpcChannel());
             rpcServer = null;
         }
     }
@@ -194,14 +215,17 @@ public final class Mc2pPlugin extends JavaPlugin {
             if (role == null) {
                 continue;
             }
-            ConfigSupport.Secret secret = ConfigSupport.resolveSecret(e.getValue(), getDataFolder().toPath());
+            ConfigSupport.Secret secret =
+                    ConfigSupport.resolveSecret(e.getValue(), getDataFolder().toPath());
             if (secret == null) {
                 log.warn("MC2P: no token configured for role '{}' (source {})", role, e.getValue());
                 continue;
             }
             if (!secret.fromEnvironment() && "config".equals(secret.source())) {
-                log.warn("MC2P: token for role '{}' is stored in config.yml as plaintext. "
-                        + "Use env:VAR or file:path instead.", role);
+                log.warn(
+                        "MC2P: token for role '{}' is stored in config.yml as plaintext. "
+                                + "Use env:VAR or file:path instead.",
+                        role);
             }
             result.put(role, secret.value());
         }
@@ -268,13 +292,15 @@ public final class Mc2pPlugin extends JavaPlugin {
         if (server == null) {
             return;
         }
-        Thread notifier = new Thread(() -> {
-            try {
-                server.notifyResourcesListChanged();
-            } catch (RuntimeException e) {
-                log.warn("MC2P: failed to notify resource list change: {}", e.getMessage());
-            }
-        }, "mc2p-notify");
+        Thread notifier = new Thread(
+                () -> {
+                    try {
+                        server.notifyResourcesListChanged();
+                    } catch (RuntimeException e) {
+                        log.warn("MC2P: failed to notify resource list change: {}", e.getMessage());
+                    }
+                },
+                "mc2p-notify");
         notifier.setDaemon(true);
         notifier.start();
     }

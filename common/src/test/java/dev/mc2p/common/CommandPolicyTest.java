@@ -5,20 +5,15 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.List;
-
-import org.junit.jupiter.api.Test;
-
 import dev.mc2p.common.role.Role;
 import dev.mc2p.common.validate.CommandPolicy;
+import java.util.List;
+import org.junit.jupiter.api.Test;
 
 class CommandPolicyTest {
 
     private static final CommandPolicy POLICY = new CommandPolicy(
-            List.of("gamemode", "tp", "teleport", "time*"),
-            List.of("*"),
-            List.of("stop", "restart", "op"),
-            512);
+            List.of("gamemode", "tp", "teleport", "time*"), List.of("*"), List.of("stop", "restart", "op"), 512);
 
     @Test
     void opsAllowlistExactAndPrefix() {

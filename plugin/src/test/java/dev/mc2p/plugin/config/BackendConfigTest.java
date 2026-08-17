@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Map;
-
 import org.junit.jupiter.api.Test;
 
 class BackendConfigTest {
@@ -22,10 +21,13 @@ class BackendConfigTest {
         assertEquals("env:MC2P_TOKEN_READER", config.auth().tokens().get("reader"));
         assertEquals(5.0, config.auth().rateLimit().tokensPerSecond());
         assertEquals(20, config.auth().rateLimit().burst());
-        assertEquals(List.of("gamemode", "tp", "teleport", "weather", "time", "effect", "clear"),
+        assertEquals(
+                List.of("gamemode", "tp", "teleport", "weather", "time", "effect", "clear"),
                 config.commands().opsAllowlist());
         assertEquals(List.of("*"), config.commands().adminAllowlist());
-        assertEquals(List.of("stop", "restart", "save-off", "save-all", "kick-all", "op"), config.commands().deny());
+        assertEquals(
+                List.of("stop", "restart", "save-off", "save-all", "kick-all", "op"),
+                config.commands().deny());
         assertEquals(30000000, config.limits().maxCoordinate());
         assertEquals("auto", config.restartStrategy());
         assertFalse(config.features().blockEdit());
@@ -39,10 +41,11 @@ class BackendConfigTest {
                 "serverId", "survival-2",
                 "features", Map.of("blockEdit", true, "stats", false),
                 "restart", Map.of("strategy", "host-restart"),
-                "commands", Map.of(
-                        "ops-allowlist", List.of("gamemode"),
-                        "admin-allowlist", List.of("*"),
-                        "deny", List.of("stop", "op")));
+                "commands",
+                        Map.of(
+                                "ops-allowlist", List.of("gamemode"),
+                                "admin-allowlist", List.of("*"),
+                                "deny", List.of("stop", "op")));
 
         BackendConfig config = BackendConfig.load(yaml);
         assertEquals("backend", config.mode());

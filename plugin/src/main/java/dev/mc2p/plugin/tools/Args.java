@@ -1,15 +1,13 @@
 package dev.mc2p.plugin.tools;
 
+import dev.mc2p.common.validate.Validators;
 import java.util.Map;
 import java.util.UUID;
-
-import dev.mc2p.common.validate.Validators;
 
 /** Robust argument extraction from MCP tool argument maps (Jackson-decoded). */
 public final class Args {
 
-    private Args() {
-    }
+    private Args() {}
 
     public static String string(Map<String, Object> args, String key) {
         Object value = args.get(key);

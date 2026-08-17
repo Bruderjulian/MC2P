@@ -15,8 +15,7 @@ public final class SelfSignedCert {
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
-    private SelfSignedCert() {
-    }
+    private SelfSignedCert() {}
 
     /**
      * Ensures a keystore exists at {@code keystore}.
@@ -37,8 +36,8 @@ public final class SelfSignedCert {
                 }
                 if (password == null) {
                     throw new IllegalStateException(
-                            "keystore " + keystore + " exists but no password is available (set "
-                                    + passwordEnv + " or keep the .password file)");
+                            "keystore " + keystore + " exists but no password is available (set " + passwordEnv
+                                    + " or keep the .password file)");
                 }
                 return password;
             }
@@ -52,18 +51,29 @@ public final class SelfSignedCert {
             List<String> command = List.of(
                     javaHome.resolve("bin/keytool").toString(),
                     "-genkeypair",
-                    "-alias", "mc2p",
-                    "-keyalg", "RSA",
-                    "-keysize", "2048",
-                    "-validity", "3650",
-                    "-dname", dname,
-                    "-keystore", keystore.toAbsolutePath().toString(),
-                    "-storetype", "PKCS12",
-                    "-storepass", password,
-                    "-keypass", password,
-                    "-ext", "SAN=dns:localhost,ip:127.0.0.1");
+                    "-alias",
+                    "mc2p",
+                    "-keyalg",
+                    "RSA",
+                    "-keysize",
+                    "2048",
+                    "-validity",
+                    "3650",
+                    "-dname",
+                    dname,
+                    "-keystore",
+                    keystore.toAbsolutePath().toString(),
+                    "-storetype",
+                    "PKCS12",
+                    "-storepass",
+                    password,
+                    "-keypass",
+                    password,
+                    "-ext",
+                    "SAN=dns:localhost,ip:127.0.0.1");
 
-            Process process = new ProcessBuilder(command).redirectErrorStream(true).start();
+            Process process =
+                    new ProcessBuilder(command).redirectErrorStream(true).start();
             process.getInputStream().readAllBytes();
             int exit = process.waitFor();
             if (exit != 0) {

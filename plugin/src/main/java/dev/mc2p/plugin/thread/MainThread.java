@@ -1,15 +1,13 @@
 package dev.mc2p.plugin.thread;
 
+import dev.mc2p.plugin.facade.FacadeException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
-
-import dev.mc2p.plugin.facade.FacadeException;
 
 /**
  * Runs Bukkit work on the server main thread and blocks the caller (an off-main-thread
@@ -58,8 +56,8 @@ public final class MainThread {
             if (cause instanceof FacadeException fe) {
                 throw fe;
             }
-            throw new FacadeException(cause.getMessage() == null ? cause.getClass().getSimpleName() : cause.getMessage(),
-                    cause);
+            throw new FacadeException(
+                    cause.getMessage() == null ? cause.getClass().getSimpleName() : cause.getMessage(), cause);
         }
     }
 

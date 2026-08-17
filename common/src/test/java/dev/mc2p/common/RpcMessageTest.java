@@ -5,17 +5,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.mc2p.common.json.Json;
+import dev.mc2p.common.rpc.RpcChunkAssembler;
+import dev.mc2p.common.rpc.RpcMessage;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-
 import org.junit.jupiter.api.Test;
-
-import dev.mc2p.common.json.Json;
-import dev.mc2p.common.rpc.RpcChunkAssembler;
-import dev.mc2p.common.rpc.RpcMessage;
 
 class RpcMessageTest {
 
@@ -59,8 +57,7 @@ class RpcMessageTest {
 
     @Test
     void requestEnvelopeFields() {
-        Map<String, Object> request = RpcMessage.request("r1", "player_info", "reader",
-                Map.of("uuid", "abc"));
+        Map<String, Object> request = RpcMessage.request("r1", "player_info", "reader", Map.of("uuid", "abc"));
         assertEquals("req", RpcMessage.type(request));
         assertEquals("r1", RpcMessage.id(request));
         assertEquals("player_info", String.valueOf(request.get("method")));

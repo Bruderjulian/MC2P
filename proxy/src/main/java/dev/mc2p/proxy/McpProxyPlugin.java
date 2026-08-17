@@ -1,14 +1,5 @@
 package dev.mc2p.proxy;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.EnumMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-
-import org.slf4j.Logger;
-
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
@@ -19,10 +10,6 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.messages.ChannelIdentifier;
 import com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
-
-import io.modelcontextprotocol.server.McpSyncServer;
-import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
-
 import dev.mc2p.common.audit.AuditLogger;
 import dev.mc2p.common.config.ConfigSupport;
 import dev.mc2p.common.http.HttpEndpointConfig;
@@ -34,6 +21,14 @@ import dev.mc2p.proxy.http.McpHttpServer;
 import dev.mc2p.proxy.rpc.BackendClient;
 import dev.mc2p.proxy.rpc.RpcListener;
 import dev.mc2p.proxy.tools.RelayTools;
+import io.modelcontextprotocol.server.McpSyncServer;
+import io.modelcontextprotocol.server.transport.HttpServletStreamableServerTransportProvider;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.EnumMap;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
 
 /**
  * The MC2P proxy plugin (Velocity). Hosts the single public MCP endpoint and routes tool
@@ -61,7 +56,10 @@ public final class McpProxyPlugin {
     private McpSyncServer mcpServer;
     private Mc2pCommand command;
 
-    public McpProxyPlugin(ProxyServer server, Logger logger, PluginDescription description,
+    public McpProxyPlugin(
+            ProxyServer server,
+            Logger logger,
+            PluginDescription description,
             @com.velocitypowered.api.plugin.annotation.DataDirectory Path dataDirectory) {
         this.server = server;
         this.logger = logger;
@@ -90,7 +88,8 @@ public final class McpProxyPlugin {
 
     @Subscribe
     public void onServerUnregistered(ServerUnregisteredEvent event) {
-        backendClient.unregisterServer(event.unregisteredServer().getServerInfo().getName());
+        backendClient.unregisterServer(
+                event.unregisteredServer().getServerInfo().getName());
     }
 
     /** Applies (or re-applies) the configuration; fully tears down and rebuilds the runtime. */
@@ -101,12 +100,15 @@ public final class McpProxyPlugin {
         tokens = new TokenManager(dataDirectory.resolve("tokens.yml"));
         tokens.updateFromConfig(resolveTokens(config));
 
-        audit = new AuditLogger(dataDirectory.resolve(config.audit().file()), config.audit().maxMb(),
+        audit = new AuditLogger(
+                dataDirectory.resolve(config.audit().file()),
+                config.audit().maxMb(),
                 config.audit().maxFiles());
 
         String proxySecret = resolveProxySecret(config);
         if (proxySecret == null || proxySecret.isBlank()) {
-            logger.warn("MC2P proxy secret ({}) is not set - backends will reject the handshake",
+            logger.warn(
+                    "MC2P proxy secret ({}) is not set - backends will reject the handshake",
                     config.rpc().secretEnv());
         }
 
@@ -114,8 +116,13 @@ public final class McpProxyPlugin {
         channel = channelParts.length == 2
                 ? MinecraftChannelIdentifier.create(channelParts[0], channelParts[1])
                 : MinecraftChannelIdentifier.create("mc2p", config.rpc().channel());
-        backendClient = new BackendClient(channel, proxySecret, config.rpc().timeoutMs(), HELLO_WINDOW_NANOS,
-                config.rpc().maxChunks(), this::notifyClients);
+        backendClient = new BackendClient(
+                channel,
+                proxySecret,
+                config.rpc().timeoutMs(),
+                HELLO_WINDOW_NANOS,
+                config.rpc().maxChunks(),
+                this::notifyClients);
 
         server.getChannelRegistrar().register(channel);
         rpcListener = new RpcListener(backendClient, channel);
@@ -125,25 +132,39 @@ public final class McpProxyPlugin {
             registerBackend(registered);
         }
 
-        HttpServletStreamableServerTransportProvider transport = McpProxyBootstrap.transport(config.mcp().endpoint());
-        mcpServer = McpProxyBootstrap.build(backendClient, server, audit, config.serverId(), version, startedAt,
-                transport);
+        HttpServletStreamableServerTransportProvider transport =
+                McpProxyBootstrap.transport(config.mcp().endpoint());
+        mcpServer =
+                McpProxyBootstrap.build(backendClient, server, audit, config.serverId(), version, startedAt, transport);
 
-        HttpEndpointConfig http = new HttpEndpointConfig(config.mcp().bind(), config.mcp().port(),
-                config.mcp().endpoint(), config.mcp().bodyLimitBytes(), config.mcp().tls().mode(),
-                config.mcp().tls().keystore(), config.mcp().tls().passwordEnv());
-        httpServer = new McpHttpServer(http, tokens, config.auth().ipAllowlist(), config.auth().rateLimit(),
-                dataDirectory, config.serverId());
+        HttpEndpointConfig http = new HttpEndpointConfig(
+                config.mcp().bind(),
+                config.mcp().port(),
+                config.mcp().endpoint(),
+                config.mcp().bodyLimitBytes(),
+                config.mcp().tls().mode(),
+                config.mcp().tls().keystore(),
+                config.mcp().tls().passwordEnv());
+        httpServer = new McpHttpServer(
+                http, tokens, config.auth().ipAllowlist(), config.auth().rateLimit(), dataDirectory, config.serverId());
         httpServer.registerServlet(transport, config.mcp().endpoint());
         httpServer.registerServlet(new HealthzServlet(config.serverId(), version), "/healthz");
         httpServer.start();
 
         command = new Mc2pCommand(this);
-        server.getCommandManager().register(
-                server.getCommandManager().metaBuilder("mc2p").plugin(this).build(), command);
+        server.getCommandManager()
+                .register(
+                        server.getCommandManager()
+                                .metaBuilder("mc2p")
+                                .plugin(this)
+                                .build(),
+                        command);
 
-        logger.info("MC2P proxy enabled (serverId={}, backends={}, tools={})", config.serverId(),
-                backendClient.knownServerIds().size(), RelayTools.count());
+        logger.info(
+                "MC2P proxy enabled (serverId={}, backends={}, tools={})",
+                config.serverId(),
+                backendClient.knownServerIds().size(),
+                RelayTools.count());
     }
 
     private void registerBackend(RegisteredServer registered) {
@@ -172,7 +193,8 @@ public final class McpProxyPlugin {
     }
 
     private String resolveProxySecret(ProxyConfig config) {
-        ConfigSupport.Secret secret = ConfigSupport.resolveSecret("env:" + config.rpc().secretEnv(), dataDirectory);
+        ConfigSupport.Secret secret =
+                ConfigSupport.resolveSecret("env:" + config.rpc().secretEnv(), dataDirectory);
         return secret == null ? null : secret.value();
     }
 
@@ -202,8 +224,10 @@ public final class McpProxyPlugin {
                 continue;
             }
             if (!secret.fromEnvironment() && "config".equals(secret.source())) {
-                logger.warn("MC2P: token for role '{}' is stored in config.yml as plaintext. "
-                        + "Use env:VAR or file:path instead.", role);
+                logger.warn(
+                        "MC2P: token for role '{}' is stored in config.yml as plaintext. "
+                                + "Use env:VAR or file:path instead.",
+                        role);
             }
             result.put(role, secret.value());
         }
@@ -216,13 +240,15 @@ public final class McpProxyPlugin {
         if (mcp == null) {
             return;
         }
-        Thread notifier = new Thread(() -> {
-            try {
-                mcp.notifyResourcesListChanged();
-            } catch (RuntimeException e) {
-                logger.warn("MC2P: failed to notify resource list change: {}", e.getMessage());
-            }
-        }, "mc2p-proxy-notify");
+        Thread notifier = new Thread(
+                () -> {
+                    try {
+                        mcp.notifyResourcesListChanged();
+                    } catch (RuntimeException e) {
+                        logger.warn("MC2P: failed to notify resource list change: {}", e.getMessage());
+                    }
+                },
+                "mc2p-proxy-notify");
         notifier.setDaemon(true);
         notifier.start();
     }

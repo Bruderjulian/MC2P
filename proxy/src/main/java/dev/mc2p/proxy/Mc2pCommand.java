@@ -1,15 +1,12 @@
 package dev.mc2p.proxy;
 
-import java.util.Map;
-
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
-
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
-
 import dev.mc2p.common.role.Role;
 import dev.mc2p.common.tokens.TokenManager.TokenInfo;
+import java.util.Map;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 
 /** {@code /mc2p} proxy console: status, reload, servers, token rotate/revoke. */
 public final class Mc2pCommand implements SimpleCommand {
@@ -45,9 +42,11 @@ public final class Mc2pCommand implements SimpleCommand {
         var config = plugin.config();
         source.sendMessage(Component.text("[MC2P] status", NamedTextColor.AQUA));
         source.sendMessage(Component.text("  serverId: " + plugin.serverId()));
-        source.sendMessage(Component.text("  mcp endpoint: " + config.mcp().bind() + ":" + config.mcp().port()
-                + config.mcp().endpoint() + " (tls=" + config.mcp().tls().mode() + ")"));
-        source.sendMessage(Component.text("  backends: " + plugin.backendServerIds().size()));
+        source.sendMessage(Component.text("  mcp endpoint: " + config.mcp().bind() + ":"
+                + config.mcp().port() + config.mcp().endpoint() + " (tls="
+                + config.mcp().tls().mode() + ")"));
+        source.sendMessage(
+                Component.text("  backends: " + plugin.backendServerIds().size()));
         source.sendMessage(Component.text("  tools registered: " + plugin.toolCount()));
         for (Map.Entry<Role, TokenInfo> e : plugin.tokens().snapshot().entrySet()) {
             TokenInfo info = e.getValue();
@@ -80,8 +79,8 @@ public final class Mc2pCommand implements SimpleCommand {
 
     private void token(CommandSource source, String[] args) {
         if (args.length < 3) {
-            source.sendMessage(Component.text("[MC2P] Usage: /mc2p token <rotate|revoke> <reader|ops|admin>",
-                    NamedTextColor.RED));
+            source.sendMessage(
+                    Component.text("[MC2P] Usage: /mc2p token <rotate|revoke> <reader|ops|admin>", NamedTextColor.RED));
             return;
         }
         Role role = Role.fromString(args[2]);
@@ -92,26 +91,41 @@ public final class Mc2pCommand implements SimpleCommand {
         switch (args[1].toLowerCase()) {
             case "rotate" -> {
                 String token = plugin.tokens().rotate(role);
-                plugin.audit().log(null, "console", plugin.serverId(), "token", "rotate",
-                        "{\"role\":\"" + role.name().toLowerCase() + "\"}");
-                source.sendMessage(Component.text("[MC2P] New " + role.name().toLowerCase()
-                        + " token (shown once):", NamedTextColor.GREEN));
+                plugin.audit()
+                        .log(
+                                null,
+                                "console",
+                                plugin.serverId(),
+                                "token",
+                                "rotate",
+                                "{\"role\":\"" + role.name().toLowerCase() + "\"}");
+                source.sendMessage(Component.text(
+                        "[MC2P] New " + role.name().toLowerCase() + " token (shown once):", NamedTextColor.GREEN));
                 source.sendMessage(Component.text(token, NamedTextColor.YELLOW));
             }
             case "revoke" -> {
                 boolean revoked = plugin.tokens().revoke(role);
-                plugin.audit().log(null, "console", plugin.serverId(), "token", "revoke",
-                        "{\"role\":\"" + role.name().toLowerCase() + "\"}");
+                plugin.audit()
+                        .log(
+                                null,
+                                "console",
+                                plugin.serverId(),
+                                "token",
+                                "revoke",
+                                "{\"role\":\"" + role.name().toLowerCase() + "\"}");
                 if (revoked) {
-                    source.sendMessage(Component.text("[MC2P] Rotated " + role.name().toLowerCase()
-                            + " token revoked (config token, if any, is active again).", NamedTextColor.GREEN));
+                    source.sendMessage(Component.text(
+                            "[MC2P] Rotated " + role.name().toLowerCase()
+                                    + " token revoked (config token, if any, is active again).",
+                            NamedTextColor.GREEN));
                 } else {
-                    source.sendMessage(Component.text("[MC2P] No rotated " + role.name().toLowerCase()
-                            + " token to revoke.", NamedTextColor.YELLOW));
+                    source.sendMessage(Component.text(
+                            "[MC2P] No rotated " + role.name().toLowerCase() + " token to revoke.",
+                            NamedTextColor.YELLOW));
                 }
             }
-            default -> source.sendMessage(Component.text(
-                    "[MC2P] Usage: /mc2p token <rotate|revoke> <reader|ops|admin>", NamedTextColor.RED));
+            default -> source.sendMessage(
+                    Component.text("[MC2P] Usage: /mc2p token <rotate|revoke> <reader|ops|admin>", NamedTextColor.RED));
         }
     }
 

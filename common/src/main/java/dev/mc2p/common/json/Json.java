@@ -1,10 +1,9 @@
 package dev.mc2p.common.json;
 
 import java.util.Map;
-
+import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
-import tools.jackson.core.type.TypeReference;
 
 /**
  * Shared JSON helper backed by Jackson 3 ({@code tools.jackson}), the same library family
@@ -14,8 +13,7 @@ public final class Json {
 
     private static final ObjectMapper MAPPER = JsonMapper.builder().build();
 
-    private Json() {
-    }
+    private Json() {}
 
     public static String toJson(Object value) {
         try {
@@ -39,8 +37,7 @@ public final class Json {
             return Map.of();
         }
         try {
-            return MAPPER.readValue(json, new TypeReference<Map<String, Object>>() {
-            });
+            return MAPPER.readValue(json, new TypeReference<Map<String, Object>>() {});
         } catch (Exception e) {
             throw new IllegalArgumentException("Failed to parse JSON", e);
         }

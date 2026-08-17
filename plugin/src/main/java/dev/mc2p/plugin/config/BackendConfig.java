@@ -1,10 +1,9 @@
 package dev.mc2p.plugin.config;
 
-import java.util.List;
-import java.util.Map;
-
 import dev.mc2p.common.config.ConfigSupport;
 import dev.mc2p.common.ratelimit.TokenBucketRateLimiter;
+import java.util.List;
+import java.util.Map;
 
 /** Typed backend plugin configuration with spec defaults. */
 public record BackendConfig(
@@ -21,27 +20,21 @@ public record BackendConfig(
 
     public record McpSection(String bind, int port, String endpoint, TlsSection tls, int bodyLimitBytes) {
 
-        public record TlsSection(String mode, String keystore, String passwordEnv) {
-        }
+        public record TlsSection(String mode, String keystore, String passwordEnv) {}
     }
 
-    public record ProxySection(String secretEnv, String rpcChannel, int timeoutMs) {
-    }
+    public record ProxySection(String secretEnv, String rpcChannel, int timeoutMs) {}
 
-    public record AuthSection(Map<String, String> tokens, List<String> ipAllowlist, TokenBucketRateLimiter.Config rateLimit) {
-    }
+    public record AuthSection(
+            Map<String, String> tokens, List<String> ipAllowlist, TokenBucketRateLimiter.Config rateLimit) {}
 
-    public record CommandSection(List<String> opsAllowlist, List<String> adminAllowlist, List<String> deny) {
-    }
+    public record CommandSection(List<String> opsAllowlist, List<String> adminAllowlist, List<String> deny) {}
 
-    public record LimitsSection(int maxCoordinate, int maxRegionBlocks, int maxEntityLimit, int maxCommandLength) {
-    }
+    public record LimitsSection(int maxCoordinate, int maxRegionBlocks, int maxEntityLimit, int maxCommandLength) {}
 
-    public record FeaturesSection(boolean blockEdit, boolean stats) {
-    }
+    public record FeaturesSection(boolean blockEdit, boolean stats) {}
 
-    public record AuditSection(String file, int maxMb, int maxFiles) {
-    }
+    public record AuditSection(String file, int maxMb, int maxFiles) {}
 
     public static final String DEFAULT_MODE = "auto";
 
@@ -108,8 +101,7 @@ public record BackendConfig(
 
         Map<String, Object> features = ConfigSupport.map(yaml.get("features"));
         FeaturesSection featuresSection = new FeaturesSection(
-                ConfigSupport.bool(features, "blockEdit", false),
-                ConfigSupport.bool(features, "stats", true));
+                ConfigSupport.bool(features, "blockEdit", false), ConfigSupport.bool(features, "stats", true));
 
         Map<String, Object> audit = ConfigSupport.map(yaml.get("audit"));
         AuditSection auditSection = new AuditSection(
@@ -117,7 +109,16 @@ public record BackendConfig(
                 ConfigSupport.integer(audit, "max-mb", 50),
                 ConfigSupport.integer(audit, "max-files", 5));
 
-        return new BackendConfig(mode, serverId, mcpSection, proxySection, authSection, commandSection, limitsSection,
-                restartStrategy, featuresSection, auditSection);
+        return new BackendConfig(
+                mode,
+                serverId,
+                mcpSection,
+                proxySection,
+                authSection,
+                commandSection,
+                limitsSection,
+                restartStrategy,
+                featuresSection,
+                auditSection);
     }
 }
