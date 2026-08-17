@@ -1,0 +1,38 @@
+# MC2P proxy configuration (Section 5.2 of the spec).
+# Tokens: use env:VAR or file:path, never plaintext in production.
+serverId: proxy-01
+
+mcp:
+  bind: 0.0.0.0
+  port: 8443
+  endpoint: /mcp
+  tls:
+    mode: selfsigned          # selfsigned | keystore | none-behind-proxy | none
+    keystore: keystore.p12
+    password-env: MC2P_KEYSTORE_PW
+  body-limit-bytes: 65536
+
+auth:
+  tokens:
+    reader: env:MC2P_TOKEN_READER
+    ops: env:MC2P_TOKEN_OPS
+    admin: env:MC2P_TOKEN_ADMIN
+  ip-allowlist: []
+  rate-limit:
+    tokens-per-second: 5
+    burst: 20
+
+# Optional Velocity server-name -> serverId map. Auto-discovered backends use the
+# Velocity server name as the serverId when not listed here.
+servers: {}
+
+rpc:
+  secret-env: MC2P_PROXY_SECRET
+  channel: mc2p:rpc
+  timeout-ms: 5000
+  max-chunks: 8
+
+audit:
+  file: logs/mcp-proxy-audit.log
+  max-mb: 50
+  max-files: 5

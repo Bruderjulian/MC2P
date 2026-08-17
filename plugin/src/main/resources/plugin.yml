@@ -1,0 +1,16 @@
+name: MC2P
+version: 0.1.0
+main: dev.mc2p.plugin.Mc2pPlugin
+api-version: "1.21"
+description: "Minecraft MCP Bridge - MCP server inside the Paper plugin (standalone or proxy backend)"
+authors: [MC2P]
+website: "https://github.com/mc2p"
+commands:
+  mc2p:
+    description: "MC2P administration"
+    usage: "/<command> <status|reload|token rotate <role>|token revoke <role>>"
+    permission: mc2p.admin
+permissions:
+  mc2p.admin:
+    description: "Manage MC2P"
+    default: op

@@ -1,0 +1,65 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+
+plugins {
+    java
+    id("com.gradleup.shadow") version "9.6.1"
+}
+
+java {
+    // Paper API 1.21.4 targets Java 21.
+    withSourcesJar()
+}
+
+tasks.withType<JavaCompile>().configureEach {
+    options.release.set(21)
+}
+
+dependencies {
+    implementation(project(":common"))
+
+    compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+
+    implementation("io.modelcontextprotocol.sdk:mcp:2.0.0")
+    implementation("org.eclipse.jetty:jetty-server:12.1.12")
+    implementation("org.eclipse.jetty.ee10:jetty-ee10-servlet:12.1.12")
+    implementation("tools.jackson.core:jackson-databind:3.0.3")
+    implementation("org.yaml:snakeyaml:2.3")
+    compileOnly("org.slf4j:slf4j-api:2.0.13")
+
+    testImplementation("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+}
+
+tasks.withType<ShadowJar>().configureEach {
+    archiveBaseName.set("mc2p-plugin")
+    archiveClassifier.set("")
+    archiveVersion.set("")
+
+    // Merge META-INF/services descriptors (MCP SDK, Jackson, Jetty) instead of dropping
+    // duplicates: INCLUDE for service files, EXCLUDE for everything else.
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    filesNotMatching("META-INF/services/**") {
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    }
+    mergeServiceFiles()
+
+    relocate("io.modelcontextprotocol", "dev.mc2p.lib.mcp")
+    relocate("org.eclipse.jetty", "dev.mc2p.lib.jetty")
+    relocate("jakarta.servlet", "dev.mc2p.lib.jakarta.servlet")
+    relocate("tools.jackson", "dev.mc2p.lib.jackson")
+    relocate("com.networknt", "dev.mc2p.lib.networknt")
+    relocate("org.yaml.snakeyaml", "dev.mc2p.lib.snakeyaml")
+    relocate("reactor.core", "dev.mc2p.lib.reactor.core")
+    relocate("reactor.util", "dev.mc2p.lib.reactor.util")
+    relocate("org.reactivestreams", "dev.mc2p.lib.reactivestreams")
+
+    exclude("META-INF/versions/**/module-info.class", "module-info.class")
+    mergeServiceFiles()
+}
+
+tasks.named("build") {
+    dependsOn(tasks.named("shadowJar"))
+}
+
+tasks.jar {
+    enabled = false
+}
