@@ -12,7 +12,7 @@ dependencies {
     api("org.yaml:snakeyaml:2.6")
     compileOnly("org.slf4j:slf4j-api:2.0.18")
 
-    testImplementation("uk.org.webcompere:system-stubs-jupiter:2.1.6")
+    testImplementation("uk.org.webcompere:system-stubs-jupiter:2.1.8")
 }
 
 extensions.extraProperties["moduleName"] = "common"
