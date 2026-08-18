@@ -22,14 +22,7 @@ jobs:
           cache: gradle
 
       - name: Build
-        run: ./gradlew build -x test -x spotlessCheck -x checkstyleMain -x checkstyleTest --console=plain
-
-      - name: Test
-        run: ./gradlew test --console=plain
-
-      - name: Code quality
-        run: ./gradlew spotlessCheck checkstyleMain checkstyleTest --console=plain
-
+        run: ./gradlew build
       - name: Import GPG key
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}

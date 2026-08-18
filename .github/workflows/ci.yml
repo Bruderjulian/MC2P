@@ -1,14 +1,14 @@
 name: Build
 
 permissions:
-  contents: read
+  contents: write
   actions: read
 
 on:
   push:
     paths:
-      - "plugin-*/**"
-      - "proxy-*/**"
+      - "plugin/**"
+      - "proxy/**"
       - "build.gradle.kts"
       - "settings.gradle.kts"
       - "gradle.properties"
@@ -19,7 +19,8 @@ on:
       - master
       - main
     paths:
-      - "zenith-*/**"
+      - "plugin/**"
+      - "proxy/**"
       - "build.gradle.kts"
       - "settings.gradle.kts"
       - "gradle.properties"
@@ -48,7 +49,7 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Build
-        run: ./gradlew build --console=plain
+        run: ./gradlew build
 
       - name: Test the artifact
         run: |
