@@ -15,7 +15,4 @@ dependencies {
     testImplementation("uk.org.webcompere:system-stubs-jupiter:2.1.6")
 }
 
-repositories {
-    mavenCentral()
-    maven("https://repo.papermc.io/repository/maven-public/")
-}
+extensions.extraProperties["moduleName"] = "common"

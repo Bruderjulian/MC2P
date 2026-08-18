@@ -72,3 +72,5 @@ tasks.named("build") {
 tasks.jar {
     enabled = false
 }
+
+extensions.extraProperties["moduleName"] = "plugin"

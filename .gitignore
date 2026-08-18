@@ -23,3 +23,4 @@
 .classpath
 *.class
 .settings
+**/bin/

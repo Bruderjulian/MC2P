@@ -11,7 +11,8 @@ import java.util.Map;
 import org.yaml.snakeyaml.Yaml;
 
 /**
- * YAML config loading and secret-source resolution ({@code env:VAR}, {@code file:path},
+ * YAML config loading and secret-source resolution ({@code env:VAR},
+ * {@code file:path},
  * plaintext).
  */
 public final class ConfigSupport {
@@ -20,7 +21,6 @@ public final class ConfigSupport {
 
     private ConfigSupport() {}
 
-    @SuppressWarnings("unchecked")
     public static Map<String, Object> loadYaml(Path file) throws IOException {
         if (!Files.isRegularFile(file)) {
             return new LinkedHashMap<>();

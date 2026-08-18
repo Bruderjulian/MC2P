@@ -1,9 +1,0 @@
-{
-  "id": "mc2p",
-  "name": "MC2P",
-  "version": "1.0.0",
-  "description": "Minecraft MCP Bridge - multi-server proxy (single MCP endpoint over mc2p:rpc)",
-  "authors": ["MC2P"],
-  "main": "dev.mc2p.proxy.McpProxyPlugin",
-  "url": ""
-}

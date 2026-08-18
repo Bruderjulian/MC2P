@@ -1,16 +1,33 @@
 name: Build & Test
 
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
 on:
   push:
+    paths:
+      - "plugin-*/**"
+      - "proxy-*/**"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - ".github/workflows/**"
   pull_request:
-
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+    types: [opened, synchronize, reopened]
+    branches:
+      - master
+      - main
+    paths:
+      - "zenith-*/**"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,9 +38,19 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: gradle
+      - name: Cache Gradle
+        uses: actions/cache@v5 # https://github.com/actions/cache/releases
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
       - name: Build
         run: ./gradlew build -x test -x spotlessCheck -x checkstyleMain -x checkstyleTest --console=plain
+
 
       - name: Test the artifact
         run: |
@@ -41,7 +68,15 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mc2p-dist
+          overwrite: true
           path: |
             plugin/build/libs/mc2p-plugin.jar
             proxy/build/libs/mc2p-proxy.jar
           if-no-files-found: error
+
+    # - name: Keep job alive on failure for debugging
+    #  if: failure()
+    #  run: |
+    #        echo "Job failed. Keeping VM alive for 30 minutes for debugging..."
+    #        echo "SSH connection info is available in the Setup runner step above"
+    #        sleep 300
