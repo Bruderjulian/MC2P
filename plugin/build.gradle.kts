@@ -5,24 +5,10 @@ plugins {
     id("com.gradleup.shadow") version "9.6.1"
 }
 
-java {
-    // Paper API 1.21.4 targets Java 21.
-    withSourcesJar()
-}
-
-tasks.withType<JavaCompile>().configureEach {
-    options.release.set(21)
-}
-
-repositories {
-    mavenCentral()
-    maven("https://repo.papermc.io/repository/maven-public/")
-}
-
 dependencies {
     implementation(project(":common"))
 
-    compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:26.2.build.112-stable")
 
     implementation("dev.jorel:commandapi-paper-shade:12.0.0")
 
@@ -32,9 +18,6 @@ dependencies {
     implementation("tools.jackson.core:jackson-databind:3.2.2")
     implementation("org.yaml:snakeyaml:2.6")
     compileOnly("org.slf4j:slf4j-api:2.0.18")
-
-    testImplementation("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
-    testImplementation("uk.org.webcompere:system-stubs-jupiter:2.1.8")
 }
 
 tasks.withType<ShadowJar>().configureEach {

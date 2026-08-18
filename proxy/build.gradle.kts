@@ -5,16 +5,10 @@ plugins {
     id("com.gradleup.shadow") version "9.6.1"
 }
 
-tasks.withType<JavaCompile>().configureEach {
-    // Velocity 3.4 + MCP SDK + Jetty 12 all support Java 17; keep bytecode at 17 for
-    // maximum proxy compatibility.
-    options.release.set(21)
-}
-
 dependencies {
     implementation(project(":common"))
 
-    compileOnly("com.velocitypowered:velocity-api:3.4.0")
+    compileOnly("com.velocitypowered:velocity-api:4.0.0")
     annotationProcessor("com.velocitypowered:velocity-api:4.1.0-SNAPSHOT")
     implementation("dev.jorel:commandapi-velocity-shade:12.0.0")
 
@@ -24,9 +18,6 @@ dependencies {
     implementation("tools.jackson.core:jackson-databind:3.2.2")
     implementation("org.yaml:snakeyaml:2.6")
     compileOnly("org.slf4j:slf4j-api:2.0.18")
-
-    testImplementation("com.velocitypowered:velocity-api:3.4.0")
-    testImplementation("uk.org.webcompere:system-stubs-jupiter:2.1.8")
 }
 
 tasks.withType<ShadowJar>().configureEach {

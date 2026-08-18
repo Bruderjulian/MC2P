@@ -39,13 +39,12 @@ contact details).
 
 ## Development setup
 
-Requires a JDK 21 and Gradle 9.x (the wrapper pins the version, so plain
+Requires a JDK 25 and Gradle 9.x (the wrapper pins the version, so plain
 `./gradlew` works).
 
 ```sh
 git clone https://github.com/Bruderjulian/MC2P.git
 cd MC2P
-export JAVA_HOME="/path/to/jdk-21"
 ./gradlew build
 ```
 
@@ -67,8 +66,6 @@ Keep changes inside the right module. New shared logic belongs in `common`, new 
   reasoning.
 - **Stay fail-closed.** Destructive tools must keep their `confirm` gate and their
   fail-closed audit entry — in both the standalone plugin and the proxy relay.
-- **Match the conventions.** Java 17 bytecode (21 for the plugin), UTF-8 sources, and
-  existing module boundaries.
 - **Don't introduce secrets.** Never commit tokens, passwords, or keystores. Use the
   `env:VAR` / `file:path` pattern from the existing configs.
 - **Behave like an admin would expect.** Defaults must be conservative: feature flags

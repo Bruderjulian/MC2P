@@ -14,8 +14,10 @@ subprojects {
 
     java {
         toolchain {
-            languageVersion = JavaLanguageVersion.of(21)
+            languageVersion = JavaLanguageVersion.of(25)
         }
+
+        withSourcesJar()
     }
 
     
@@ -26,7 +28,7 @@ subprojects {
     }
 
     tasks.withType<JavaCompile>().configureEach {
-        options.release.set(17)
+        options.release.set(25)
         options.encoding = "UTF-8"
         options.compilerArgs.add("-Xlint:deprecation")
     }

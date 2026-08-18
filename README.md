@@ -5,7 +5,7 @@
 An MCP server that gives AI agents safe, audited control of Paper Minecraft servers.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Java](https://img.shields.io/badge/Java-21-007396.svg)](#requirements)
+[![Java](https://img.shields.io/badge/Java-25-007396.svg)](#requirements)
 [![Paper](https://img.shields.io/badge/Paper-1.20.x%E2%80%931.21.x-e3f2fd.svg)](#requirements)
 [![Velocity](https://img.shields.io/badge/Velocity-3.3%2B-9cf.svg)](#requirements)
 
@@ -99,15 +99,14 @@ read tools can broadcast across the fleet with `server="*"`. See
 
 | Component   | Version                                  |
 |-------------|------------------------------------------|
-| Paper       | 1.20.x / 1.21.x (plugin bytecode: Java 21) |
+| Paper       | 1.20.x / 1.21.x |
 | Velocity    | 3.3+ (multi-server proxy only)           |
-| JDK         | 21 to build; all jars target Java 21    |
+| JDK         | 25 to build; all jars target Java 25    |
 | Gradle      | 9.x                                      |
 
 ## Build
 
 ```sh
-export JAVA_HOME="/path/to/jdk-21"
 ./gradlew build            # builds all modules incl. shaded jars
 ```
 
@@ -314,7 +313,6 @@ standards.
 ```sh
 git clone https://github.com/Bruderjulian/MC2P.git
 cd MC2P
-export JAVA_HOME="/path/to/jdk-21"
 ./gradlew build
 ./gradlew test
 ```
