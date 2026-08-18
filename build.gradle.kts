@@ -12,6 +12,8 @@ allprojects {
 
 subprojects {
     apply(plugin = "java")
+    apply(plugin = "java-library")
+    apply(plugin = "maven-publish")
     apply(plugin = "com.diffplug.spotless")
     apply(plugin = "checkstyle")
     apply(plugin = "jacoco")
@@ -20,6 +22,13 @@ subprojects {
         toolchain {
             languageVersion = JavaLanguageVersion.of(21)
         }
+    }
+
+    
+    dependencies {
+        testImplementation(platform("org.junit:junit-bom:6.1.3"))
+        testImplementation("org.junit.jupiter:junit-jupiter")
+        testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     }
 
     tasks.withType<JavaCompile>().configureEach {
@@ -52,19 +61,8 @@ subprojects {
 
     tasks.withType<JacocoReport>().configureEach {
         reports {
-            xml.required.set(true)
-            html.required.set(true)
+            xml.required.set(false)
+            html.required.set(false)
         }
-    }
-
-    dependencies {
-        testImplementation(platform("org.junit:junit-bom:5.10.2"))
-        testImplementation("org.junit.jupiter:junit-jupiter")
-        testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    }
-
-    repositories {
-        mavenCentral()
-        maven("https://repo.papermc.io/repository/maven-public/")
     }
 }

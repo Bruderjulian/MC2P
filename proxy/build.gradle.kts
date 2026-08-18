@@ -22,7 +22,7 @@ dependencies {
     implementation("org.eclipse.jetty:jetty-server:12.1.12")
     implementation("org.eclipse.jetty.ee10:jetty-ee10-servlet:12.1.12")
     implementation("tools.jackson.core:jackson-databind:3.0.3")
-    implementation("org.yaml:snakeyaml:2.3")
+    implementation("org.yaml:snakeyaml:2.6")
     compileOnly("org.slf4j:slf4j-api:2.0.13")
 
     testImplementation("com.velocitypowered:velocity-api:3.4.0")
@@ -64,3 +64,5 @@ tasks.named("build") {
 tasks.jar {
     enabled = false
 }
+
+extensions.extraProperties["moduleName"] = "proxy"
