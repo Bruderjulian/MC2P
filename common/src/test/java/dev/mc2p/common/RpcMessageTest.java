@@ -2,6 +2,7 @@ package dev.mc2p.common;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -71,5 +72,67 @@ class RpcMessageTest {
         assertEquals("hello-no", RpcMessage.type(denied));
         assertEquals("bad secret", String.valueOf(denied.get("error")));
         assertNull(RpcMessage.type(Map.of()));
+    }
+
+    @Test
+    void helloCarriesSecret() {
+        Map<String, Object> hello = RpcMessage.hello("my-secret");
+        assertEquals("hello", RpcMessage.type(hello));
+        assertEquals("my-secret", String.valueOf(hello.get("secret")));
+    }
+
+    @Test
+    void helloOkCarriesServerId() {
+        Map<String, Object> ok = RpcMessage.helloOk("server-01");
+        assertEquals("hello-ok", RpcMessage.type(ok));
+        assertEquals("server-01", String.valueOf(ok.get("serverId")));
+    }
+
+    @Test
+    void requestDefaultsForNullClientAndParams() {
+        Map<String, Object> request = RpcMessage.request("r2", "method", "admin", null, null);
+        assertEquals("", String.valueOf(request.get("client")));
+        assertEquals(Map.of(), request.get("params"));
+    }
+
+    @Test
+    void responseOkNullResultDefaultsEmpty() {
+        Map<String, Object> response = RpcMessage.response("r3", true, null, null);
+        assertEquals("resp", RpcMessage.type(response));
+        assertEquals(Map.of(), response.get("result"));
+        assertFalse(response.containsKey("error"));
+    }
+
+    @Test
+    void responseErrorNullDefaultsUnknown() {
+        Map<String, Object> response = RpcMessage.response("r4", false, null, null);
+        assertEquals("unknown error", String.valueOf(response.get("error")));
+        Map<String, Object> explicit = RpcMessage.response("r5", false, null, "nope");
+        assertEquals("nope", String.valueOf(explicit.get("error")));
+    }
+
+    @Test
+    void eventCarriesNameAndParams() {
+        Map<String, Object> event = RpcMessage.event("player-join", Map.of("name", "steve"));
+        assertEquals("event", RpcMessage.type(event));
+        assertEquals("player-join", String.valueOf(event.get("event")));
+        assertEquals(Map.of("name", "steve"), event.get("params"));
+        assertEquals(Map.of(), RpcMessage.event("x", null).get("params"));
+    }
+
+    @Test
+    void idMissingReturnsNull() {
+        assertNull(RpcMessage.id(Map.of("t", "resp")));
+        assertEquals("abc", RpcMessage.id(Map.of("id", "abc")));
+    }
+
+    @Test
+    void encodeResponseSingleMessagePreservesPayload() {
+        Map<String, Object> response = RpcMessage.response("id-single", false, null, "boom");
+        byte[] json = Json.toJsonBytes(response);
+        List<Map<String, Object>> encoded = RpcMessage.encodeResponse("id-single", json);
+        assertEquals(1, encoded.size());
+        assertEquals("resp", RpcMessage.type(encoded.get(0)));
+        assertEquals("boom", String.valueOf(encoded.get(0).get("error")));
     }
 }

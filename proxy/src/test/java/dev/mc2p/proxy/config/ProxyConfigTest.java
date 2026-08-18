@@ -76,6 +76,34 @@ class ProxyConfigTest {
         assertEquals(8000, config.rpc().timeoutMs());
     }
 
+    @Test
+    void skipsInvalidTokens() {
+        Map<String, Object> yaml = Map.of(
+                "auth",
+                Map.of(
+                        "tokens",
+                        List.of(
+                                Map.of("name", "", "role", "ops", "token", "env:X"),
+                                Map.of("name", "n1", "role", "not-a-role", "token", "env:X"),
+                                Map.of("name", "n2", "role", "reader", "token", " "),
+                                Map.of("name", "valid", "role", "admin", "token", "env:V"))));
+
+        ProxyConfig config = ProxyConfig.load(yaml);
+        assertEquals(1, config.auth().tokens().size());
+        assertEquals("valid", config.auth().tokens().get(0).name());
+        assertEquals(Role.ADMIN, config.auth().tokens().get(0).role());
+    }
+
+    @Test
+    void skipsUnknownRoleKeysInLegacyMap() {
+        Map<String, Object> yaml =
+                Map.of("auth", Map.of("tokens", Map.of("reader", "env:R", "not-a-role", "env:X")));
+
+        ProxyConfig config = ProxyConfig.load(yaml);
+        assertEquals(1, config.auth().tokens().size());
+        assertEquals("reader", config.auth().tokens().get(0).name());
+    }
+
     private static ProxyConfig.AuthSection.NamedToken namedToken(ProxyConfig config, String name) {
         return config.auth().tokens().stream()
                 .filter(t -> t.name().equals(name))

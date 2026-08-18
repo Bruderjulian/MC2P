@@ -1,5 +1,6 @@
 package dev.mc2p.common;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -46,6 +47,33 @@ class CidrTest {
     void invalidInputRejected() {
         assertThrows(IllegalArgumentException.class, () -> Cidr.parse("not-an-address"));
         assertThrows(IllegalArgumentException.class, () -> Cidr.parse("10.0.0.0/33"));
+        assertThrows(IllegalArgumentException.class, () -> Cidr.parse("10.0.0.0/-1"));
         assertTrue(Cidr.parseAll(Arrays.asList("", "  ", null)).isEmpty());
+        assertTrue(Cidr.parseAll(null).isEmpty());
+        assertEquals(2, Cidr.parseAll(Arrays.asList("10.0.0.0/8", " ", "172.16.0.0/12", null)).size());
+    }
+
+    @Test
+    void partialBytePrefixMasksBits() throws Exception {
+        Cidr rule = Cidr.parse("192.168.1.0/25");
+        assertTrue(rule.contains(InetAddress.getByName("192.168.1.5")));
+        assertTrue(rule.contains(InetAddress.getByName("192.168.1.127")));
+        assertFalse(rule.contains(InetAddress.getByName("192.168.1.128")));
+        assertFalse(rule.contains(InetAddress.getByName("192.168.1.200")));
+    }
+
+    @Test
+    void zeroPrefixMatchesEverything() throws Exception {
+        Cidr rule = Cidr.parse("0.0.0.0/0");
+        assertTrue(rule.contains(InetAddress.getByName("203.0.113.42")));
+        assertTrue(rule.contains(InetAddress.getByName("10.9.9.9")));
+    }
+
+    @Test
+    void mismatchedAddressFamilyDoesNotMatch() throws Exception {
+        Cidr v4 = Cidr.parse("10.0.0.0/8");
+        assertFalse(v4.contains(InetAddress.getByName("::1")));
+        Cidr v6 = Cidr.parse("::1/128");
+        assertFalse(v6.contains(InetAddress.getByName("10.0.0.1")));
     }
 }

@@ -26,6 +26,7 @@ dependencies {
     compileOnly("org.slf4j:slf4j-api:2.0.13")
 
     testImplementation("com.velocitypowered:velocity-api:3.4.0")
+    testImplementation("uk.org.webcompere:system-stubs-jupiter:2.1.6")
 }
 
 tasks.withType<ShadowJar>().configureEach {

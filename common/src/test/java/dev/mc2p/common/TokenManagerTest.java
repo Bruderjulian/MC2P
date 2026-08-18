@@ -4,10 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.mc2p.common.role.Role;
 import dev.mc2p.common.tokens.TokenManager;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -221,5 +223,172 @@ class TokenManagerTest {
         assertFalse(TokenManager.isValidName("colon:name"));
         assertTrue(TokenManager.isValidName("alice-2"));
         assertTrue(TokenManager.isValidName("CI_bot"));
+    }
+
+    @Test
+    void defaultNameLowercasesRole() {
+        assertEquals("reader", TokenManager.defaultName(Role.READER));
+        assertEquals("ops", TokenManager.defaultName(Role.OPS));
+        assertEquals("admin", TokenManager.defaultName(Role.ADMIN));
+    }
+
+    @Test
+    void nullConfigClearsConfiguredEntries() {
+        TokenManager manager = new TokenManager(tempDir.resolve("tokens.yml"));
+        manager.updateFromConfig(Map.of("reader", configToken(Role.READER, "reader-token")));
+        manager.updateFromConfig(null);
+        assertNull(manager.authenticate("reader-token"));
+        assertFalse(manager.hasRole(Role.READER));
+    }
+
+    @Test
+    void invalidConfiguredEntriesAreSkipped() {
+        TokenManager manager = new TokenManager(tempDir.resolve("tokens.yml"));
+        Map<String, TokenManager.ConfigToken> configured = new java.util.LinkedHashMap<>();
+        configured.put(null, configToken(Role.READER, "secret"));
+        configured.put("", configToken(Role.READER, "secret"));
+        configured.put("blank", configToken(Role.READER, "  "));
+        configured.put("no-secret", configToken(Role.READER, null));
+        configured.put("no-role", new TokenManager.ConfigToken(null, "secret"));
+        configured.put(null, null);
+        configured.put("null-ct", null);
+        configured.put("valid", configToken(Role.ADMIN, "admin-token"));
+        manager.updateFromConfig(configured);
+
+        assertNotNull(manager.authenticate("admin-token"));
+        assertNull(manager.authenticate("secret"));
+    }
+
+    @Test
+    void createRejectsInvalidInputs() {
+        TokenManager manager = new TokenManager(tempDir.resolve("tokens.yml"));
+        assertThrows(IllegalArgumentException.class, () -> manager.create("bad name", Role.OPS));
+        assertThrows(IllegalArgumentException.class, () -> manager.create("toolong:" + "x".repeat(60), Role.OPS));
+        assertThrows(IllegalArgumentException.class, () -> manager.create("alice", null));
+        assertThrows(IllegalArgumentException.class, () -> manager.create("", Role.OPS));
+    }
+
+    @Test
+    void nullRuntimeFileSkipsPersistence() {
+        TokenManager manager = new TokenManager(null);
+        String token = manager.create("alice", Role.ADMIN);
+        assertNotNull(manager.authenticate(token));
+        manager.updateFromConfig(Map.of());
+        assertNull(manager.authenticate(token));
+        assertFalse(manager.revoke("alice"));
+        assertFalse(manager.disable("missing"));
+    }
+
+    @Test
+    void runtimeFileLoadsEveryLineShape() throws Exception {
+        Path file = tempDir.resolve("complex.yml");
+        java.nio.file.Files.writeString(
+                file,
+                "# comment\n"
+                        + "\n"
+                        + "disabled: ops,not-a name\n"
+                        + "alice: ops 0011223344556677\n"
+                        + "no-colon-line\n"
+                        + "bad name: ops 0011223344556677\n"
+                        + "empty: \n"
+                        + "ops: 8899aabbccddeeff\n"
+                        + "bob: 0011223344556677\n");
+        TokenManager manager = new TokenManager(file);
+        manager.updateFromConfig(Map.of());
+
+        assertFalse(manager.hasRole(Role.ADMIN));
+        assertTrue(manager.hasRole(Role.OPS));
+        assertFalse(manager.hasRole(Role.READER));
+        assertEquals("alice", manager.snapshot().get("alice").name());
+        assertNull(manager.snapshot().get("bob"));
+        assertTrue(manager.snapshot().get("ops").disabled());
+        assertFalse(manager.snapshot().get("alice").disabled());
+    }
+
+    @Test
+    void corruptRuntimeFileFallsBackToConfig() throws Exception {
+        Path file = tempDir.resolve("corrupt.yml");
+        java.nio.file.Files.writeString(file, "alice: ops nothex\n");
+        TokenManager manager = new TokenManager(file);
+        manager.updateFromConfig(Map.of("reader", configToken(Role.READER, "reader-token")));
+
+        assertEquals(Role.READER, manager.authenticate("reader-token").role());
+        assertFalse(manager.hasRole(Role.OPS));
+        assertTrue(manager.snapshot().get("reader").configured());
+    }
+
+    @Test
+    void roleKeyedSingleTokenLineCorruptsFile() throws Exception {
+        Path file = tempDir.resolve("role-as-hex.yml");
+        java.nio.file.Files.writeString(file, "ops: ops\n");
+        TokenManager manager = new TokenManager(file);
+        manager.updateFromConfig(Map.of("reader", configToken(Role.READER, "reader-token")));
+
+        assertEquals(Role.READER, manager.authenticate("reader-token").role());
+        assertFalse(manager.hasRole(Role.OPS));
+    }
+
+    @Test
+    void disabledStatePrunedWhenConfigEntryRemoved() throws Exception {
+        Path file = tempDir.resolve("prune.yml");
+        TokenManager manager = new TokenManager(file);
+        manager.updateFromConfig(Map.of("reader", configToken(Role.READER, "reader-token")));
+        manager.disable("reader");
+
+        manager.updateFromConfig(Map.of());
+        assertNull(manager.authenticate("reader-token"));
+        assertFalse(manager.enable("reader"));
+    }
+
+    @Test
+    void legacyReaderFormatDisabledFlag() throws Exception {
+        Path file = tempDir.resolve("legacy-disabled.yml");
+        java.nio.file.Files.writeString(file, "reader: 0011223344556677\ndisabled: reader\n");
+        TokenManager manager = new TokenManager(file);
+        manager.updateFromConfig(Map.of());
+
+        assertTrue(manager.snapshot().get("reader").disabled());
+        assertFalse(manager.hasRole(Role.READER));
+        assertTrue(manager.enable("reader"));
+    }
+
+    @Test
+    void persistFailureThrows() throws Exception {
+        Path dir = tempDir.resolve("as-dir");
+        Files.createDirectories(dir);
+        TokenManager manager = new TokenManager(dir);
+        assertThrows(IllegalStateException.class, () -> manager.create("alice", Role.OPS));
+    }
+
+    @Test
+    void persistedFileUsesNameRoleHashFormat() throws Exception {
+        Path file = tempDir.resolve("format.yml");
+        TokenManager manager = new TokenManager(file);
+        String token = manager.create("deploy", Role.OPS);
+        String persisted = java.nio.file.Files.readString(file);
+        assertTrue(persisted.startsWith("# mc2p tokens"));
+        assertTrue(persisted.contains("deploy: ops "));
+        assertFalse(persisted.contains("disabled:"));
+
+        manager.disable("deploy");
+        String persisted2 = java.nio.file.Files.readString(file);
+        assertTrue(persisted2.contains("disabled: deploy"));
+        assertNull(manager.authenticate(token));
+    }
+
+    @Test
+    void disabledNameSurvivesConfigUpdateUntilEnabled() {
+        TokenManager manager = new TokenManager(tempDir.resolve("tokens.yml"));
+        manager.updateFromConfig(Map.of("reader", configToken(Role.READER, "reader-token")));
+        manager.disable("reader");
+        manager.updateFromConfig(Map.of("reader", configToken(Role.ADMIN, "admin-token")));
+
+        assertNull(manager.authenticate("admin-token"));
+        assertNull(manager.authenticate("reader-token"));
+        assertTrue(manager.snapshot().get("reader").disabled());
+
+        assertTrue(manager.enable("reader"));
+        assertEquals(Role.ADMIN, manager.authenticate("admin-token").role());
+        assertFalse(manager.snapshot().get("reader").disabled());
     }
 }

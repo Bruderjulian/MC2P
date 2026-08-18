@@ -14,6 +14,7 @@ subprojects {
     apply(plugin = "java")
     apply(plugin = "com.diffplug.spotless")
     apply(plugin = "checkstyle")
+    apply(plugin = "jacoco")
 
     java {
         toolchain {
@@ -45,6 +46,14 @@ subprojects {
         testLogging {
             events("passed", "skipped", "failed")
             exceptionFormat = TestExceptionFormat.FULL
+        }
+        finalizedBy(tasks.named("jacocoTestReport"))
+    }
+
+    tasks.withType<JacocoReport>().configureEach {
+        reports {
+            xml.required.set(true)
+            html.required.set(true)
         }
     }
 
