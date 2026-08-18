@@ -13,13 +13,14 @@ public final class Tokens {
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final int TOKEN_BYTES = 32; // 256-bit
 
-    private Tokens() {}
+    private Tokens() {
+    }
 
     /**
      * Generates a fresh 256-bit random token, URL-safe base64 encoded.
      */
     public static String generateToken() {
-        byte[] bytes = new byte[TOKEN_BYTES];
+        final byte[] bytes = new byte[TOKEN_BYTES];
         RANDOM.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
@@ -27,34 +28,35 @@ public final class Tokens {
     /**
      * SHA-256 of the token bytes (UTF-8 of the token string).
      */
-    public static byte[] sha256(String token) {
+    public static byte[] sha256(final String token) {
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            final MessageDigest digest = MessageDigest.getInstance("SHA-256");
             return digest.digest(token.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        } catch (java.security.NoSuchAlgorithmException e) {
+        } catch (final java.security.NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 not available", e);
         }
     }
 
     /**
-     * A short, non-secret identifier derived from the token hash, used in audit entries
+     * A short, non-secret identifier derived from the token hash, used in audit
+     * entries
      * so the secret itself is never logged.
      */
-    public static String tokenId(byte[] sha256) {
+    public static String tokenId(final byte[] sha256) {
         return HexFormat.of().formatHex(sha256, 0, 4);
     }
 
     /**
      * Constant-time comparison of two byte arrays.
      */
-    public static boolean constantTimeEquals(byte[] a, byte[] b) {
+    public static boolean constantTimeEquals(final byte[] a, final byte[] b) {
         return MessageDigest.isEqual(a, b);
     }
 
     /**
      * Constant-time comparison of two strings.
      */
-    public static boolean constantTimeEquals(String a, String b) {
+    public static boolean constantTimeEquals(final String a, final String b) {
         if (a == null || b == null) {
             return false;
         }

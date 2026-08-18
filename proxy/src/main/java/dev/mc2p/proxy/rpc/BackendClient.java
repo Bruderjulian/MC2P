@@ -17,10 +17,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Proxy-side relay over {@code mc2p:rpc}. Sends an authenticated {@code hello} before each
- * request (plugin-messaging ordering guarantees the backend processes it first, so the
- * shared {@code proxySecret} handshake is enforced on every call), correlates responses by
- * id, and reassembles chunked responses. Runs entirely on Velocity/event threads.
+ * Proxy-side relay over {@code mc2p:rpc}. Sends an authenticated {@code hello}
+ * before each
+ * request (plugin-messaging ordering guarantees the backend processes it first,
+ * so the
+ * shared {@code proxySecret} handshake is enforced on every call), correlates
+ * responses by
+ * id, and reassembles chunked responses. Runs entirely on Velocity/event
+ * threads.
  */
 public final class BackendClient {
 
@@ -42,7 +46,7 @@ public final class BackendClient {
         final Map<String, CompletableFuture<Map<String, Object>>> pending = new ConcurrentHashMap<>();
         final RpcChunkAssembler assembler;
 
-        Connection(int maxChunks) {
+        Connection(final int maxChunks) {
             this.assembler = new RpcChunkAssembler(maxChunks);
         }
     }
@@ -50,12 +54,12 @@ public final class BackendClient {
     private final Map<String, Connection> connections = new ConcurrentHashMap<>();
 
     public BackendClient(
-            ChannelIdentifier channel,
-            String proxySecret,
-            long timeoutMillis,
-            long helloWindowNanos,
-            int maxChunks,
-            Runnable resourceChangedHook) {
+            final ChannelIdentifier channel,
+            final String proxySecret,
+            final long timeoutMillis,
+            final long helloWindowNanos,
+            final int maxChunks,
+            final Runnable resourceChangedHook) {
         this.channel = channel;
         this.proxySecret = proxySecret;
         this.timeoutMillis = Math.max(1000, timeoutMillis);
@@ -64,19 +68,19 @@ public final class BackendClient {
         this.resourceChangedHook = resourceChangedHook;
     }
 
-    public void registerServer(String serverId, RegisteredServer server) {
+    public void registerServer(final String serverId, final RegisteredServer server) {
         nameToServerId.put(server.getServerInfo().getName(), serverId);
-        Connection conn = connections.computeIfAbsent(serverId, k -> new Connection(maxChunks));
+        final Connection conn = connections.computeIfAbsent(serverId, k -> new Connection(maxChunks));
         conn.server = server;
         send(server, RpcMessage.hello(proxySecret));
     }
 
-    public void unregisterServer(String serverName) {
-        String serverId = nameToServerId.remove(serverName);
+    public void unregisterServer(final String serverName) {
+        final String serverId = nameToServerId.remove(serverName);
         if (serverId != null) {
-            Connection conn = connections.get(serverId);
+            final Connection conn = connections.get(serverId);
             if (conn != null) {
-                for (CompletableFuture<Map<String, Object>> f : conn.pending.values()) {
+                for (final CompletableFuture<Map<String, Object>> f : conn.pending.values()) {
                     f.complete(null);
                 }
                 conn.pending.clear();
@@ -88,35 +92,39 @@ public final class BackendClient {
         return new java.util.ArrayList<>(connections.keySet());
     }
 
-    /** Resolves a Velocity server name to its configured serverId, if registered. */
-    public Optional<String> serverIdForVelocityName(String name) {
+    /**
+     * Resolves a Velocity server name to its configured serverId, if registered.
+     */
+    public Optional<String> serverIdForVelocityName(final String name) {
         return Optional.ofNullable(nameToServerId.get(name));
     }
 
     /**
-     * Relays one tool call to a backend and blocks until the response arrives or the
+     * Relays one tool call to a backend and blocks until the response arrives or
+     * the
      * timeout elapses.
      *
-     * @return the {@code resp} message ({@code ok/result|error}), or empty if unreachable
+     * @return the {@code resp} message ({@code ok/result|error}), or empty if
+     *         unreachable
      */
     public Optional<Map<String, Object>> call(
-            String serverId,
-            String method,
-            String tokenId,
-            RestrictionsConfig restrictions,
-            String client,
-            Map<String, Object> params) {
-        Connection conn = connections.get(serverId);
+            final String serverId,
+            final String method,
+            final String tokenId,
+            final RestrictionsConfig restrictions,
+            final String client,
+            final Map<String, Object> params) {
+        final Connection conn = connections.get(serverId);
         if (conn == null) {
             return Optional.empty();
         }
-        RegisteredServer server = conn.server;
+        final RegisteredServer server = conn.server;
         if (server == null) {
             return Optional.empty();
         }
 
-        String id = UUID.randomUUID().toString();
-        CompletableFuture<Map<String, Object>> future = new CompletableFuture<>();
+        final String id = UUID.randomUUID().toString();
+        final CompletableFuture<Map<String, Object>> future = new CompletableFuture<>();
         conn.pending.put(id, future);
         try {
             if (System.nanoTime() > conn.authenticatedUntil) {
@@ -126,15 +134,15 @@ public final class BackendClient {
                     server,
                     RpcMessage.request(
                             id, method, client, tokenId, restrictions == null ? null : restrictions.toMap(), params));
-            Map<String, Object> response = future.get(timeoutMillis, TimeUnit.MILLISECONDS);
+            final Map<String, Object> response = future.get(timeoutMillis, TimeUnit.MILLISECONDS);
             return response == null ? Optional.empty() : Optional.of(response);
-        } catch (TimeoutException e) {
+        } catch (final TimeoutException e) {
             log.warn("mc2p:rpc: request {} to {} timed out after {}ms", id, serverId, timeoutMillis);
             return Optional.empty();
-        } catch (InterruptedException e) {
+        } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
             return Optional.empty();
-        } catch (Exception e) {
+        } catch (final Exception e) {
             log.warn("mc2p:rpc: request {} to {} failed: {}", id, serverId, e.getMessage());
             return Optional.empty();
         } finally {
@@ -143,26 +151,26 @@ public final class BackendClient {
     }
 
     /** Handles an inbound plugin message from a backend server. */
-    public void handleServerMessage(RegisteredServer server, byte[] data) {
-        String serverId = nameToServerId.get(server.getServerInfo().getName());
+    public void handleServerMessage(final RegisteredServer server, final byte[] data) {
+        final String serverId = nameToServerId.get(server.getServerInfo().getName());
         if (serverId == null) {
             return;
         }
-        Connection conn = connections.get(serverId);
+        final Connection conn = connections.get(serverId);
         if (conn == null) {
             return;
         }
         Map<String, Object> decoded;
         try {
             decoded = Json.parse(data);
-        } catch (RuntimeException e) {
+        } catch (final RuntimeException e) {
             log.warn("mc2p:rpc: malformed message from {}", serverId);
             return;
         }
-        String type = RpcMessage.type(decoded);
+        final String type = RpcMessage.type(decoded);
         switch (type == null ? "" : type) {
             case "hello-ok" -> {
-                Object reported = decoded.get("serverId");
+                final Object reported = decoded.get("serverId");
                 if (reported != null && !String.valueOf(reported).equals(serverId)) {
                     log.warn("mc2p:rpc: server {} reported serverId '{}'", serverId, reported);
                 }
@@ -174,26 +182,27 @@ public final class BackendClient {
             }
             case "resp" -> complete(conn, RpcMessage.id(decoded), decoded);
             case "chunk" -> {
-                Optional<byte[]> reassembled = conn.assembler.addChunk(decoded);
+                final Optional<byte[]> reassembled = conn.assembler.addChunk(decoded);
                 if (reassembled.isPresent()) {
                     try {
-                        Map<String, Object> response = Json.parse(reassembled.get());
+                        final Map<String, Object> response = Json.parse(reassembled.get());
                         complete(conn, RpcMessage.id(response), response);
-                    } catch (RuntimeException e) {
+                    } catch (final RuntimeException e) {
                         log.warn("mc2p:rpc: failed to parse reassembled response from {}", serverId);
                     }
                 }
             }
             case "event" -> notifyClients();
-            default -> {}
+            default -> {
+            }
         }
     }
 
-    private void complete(Connection conn, String id, Map<String, Object> response) {
+    private void complete(final Connection conn, final String id, final Map<String, Object> response) {
         if (id == null) {
             return;
         }
-        CompletableFuture<Map<String, Object>> future = conn.pending.remove(id);
+        final CompletableFuture<Map<String, Object>> future = conn.pending.remove(id);
         if (future != null) {
             future.complete(response);
         }
@@ -205,10 +214,10 @@ public final class BackendClient {
         }
     }
 
-    private void send(RegisteredServer server, Map<String, Object> message) {
+    private void send(final RegisteredServer server, final Map<String, Object> message) {
         try {
             server.sendPluginMessage(channel, Json.toJsonBytes(message));
-        } catch (RuntimeException e) {
+        } catch (final RuntimeException e) {
             log.warn(
                     "mc2p:rpc: failed to send to {}: {}", server.getServerInfo().getName(), e.getMessage());
         }

@@ -15,7 +15,7 @@ dependencies {
     implementation(project(":common"))
 
     compileOnly("com.velocitypowered:velocity-api:3.4.0")
-
+    annotationProcessor("com.velocitypowered:velocity-api:4.1.0-SNAPSHOT")
     implementation("dev.jorel:commandapi-velocity-shade:12.0.0")
 
     implementation("io.modelcontextprotocol.sdk:mcp:2.0.0")

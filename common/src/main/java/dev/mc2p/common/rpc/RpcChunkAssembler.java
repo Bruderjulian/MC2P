@@ -6,7 +6,8 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Reassembles chunked RPC responses (proxy side) and splits large requests (proxy side,
+ * Reassembles chunked RPC responses (proxy side) and splits large requests
+ * (proxy side,
  * for the backend) back into message maps.
  */
 public final class RpcChunkAssembler {
@@ -16,7 +17,7 @@ public final class RpcChunkAssembler {
         final byte[][] parts;
         int received = 0;
 
-        Assembly(int count) {
+        Assembly(final int count) {
             this.count = count;
             this.parts = new byte[count][];
         }
@@ -29,36 +30,40 @@ public final class RpcChunkAssembler {
         this(-1);
     }
 
-    /** @param maxChunks reject responses announced with more chunks than this (<=0 = unlimited) */
-    public RpcChunkAssembler(int maxChunks) {
+    /**
+     * @param maxChunks reject responses announced with more chunks than this (<=0 =
+     *                  unlimited)
+     */
+    public RpcChunkAssembler(final int maxChunks) {
         this.maxChunks = maxChunks;
     }
 
     /**
-     * Feeds a {@code chunk} message; returns the fully reassembled bytes once all chunks
+     * Feeds a {@code chunk} message; returns the fully reassembled bytes once all
+     * chunks
      * for the id are present.
      */
-    public Optional<byte[]> addChunk(Map<String, Object> chunk) {
-        String id = RpcMessage.id(chunk);
+    public Optional<byte[]> addChunk(final Map<String, Object> chunk) {
+        final String id = RpcMessage.id(chunk);
         if (id == null) {
             return Optional.empty();
         }
-        int idx = (int) ((Number) chunk.getOrDefault("idx", -1));
-        int count = (int) ((Number) chunk.getOrDefault("count", -1));
+        final int idx = (int) ((Number) chunk.getOrDefault("idx", -1));
+        final int count = (int) ((Number) chunk.getOrDefault("count", -1));
         if (idx < 0 || count <= 0 || idx >= count) {
             return Optional.empty();
         }
         if (maxChunks > 0 && count > maxChunks) {
             return Optional.empty();
         }
-        String data = String.valueOf(chunk.get("data"));
+        final String data = String.valueOf(chunk.get("data"));
         byte[] part;
         try {
             part = Base64.getDecoder().decode(data);
-        } catch (IllegalArgumentException e) {
+        } catch (final IllegalArgumentException e) {
             return Optional.empty();
         }
-        Assembly assembly = pending.computeIfAbsent(id, k -> new Assembly(count));
+        final Assembly assembly = pending.computeIfAbsent(id, k -> new Assembly(count));
         if (idx < assembly.parts.length && assembly.parts[idx] == null) {
             assembly.parts[idx] = part;
             assembly.received++;
@@ -66,12 +71,12 @@ public final class RpcChunkAssembler {
         if (assembly.received == assembly.count) {
             pending.remove(id);
             int total = 0;
-            for (byte[] p : assembly.parts) {
+            for (final byte[] p : assembly.parts) {
                 total += p.length;
             }
-            byte[] result = new byte[total];
+            final byte[] result = new byte[total];
             int offset = 0;
-            for (byte[] p : assembly.parts) {
+            for (final byte[] p : assembly.parts) {
                 System.arraycopy(p, 0, result, offset, p.length);
                 offset += p.length;
             }

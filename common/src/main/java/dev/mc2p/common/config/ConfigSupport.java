@@ -17,11 +17,13 @@ import org.yaml.snakeyaml.Yaml;
  */
 public final class ConfigSupport {
 
-    public record Secret(String value, String source, boolean fromEnvironment) {}
+    public record Secret(String value, String source, boolean fromEnvironment) {
+    }
 
-    private ConfigSupport() {}
+    private ConfigSupport() {
+    }
 
-    public static Map<String, Object> loadYaml(Path file) throws IOException {
+    public static Map<String, Object> loadYaml(final Path file) throws IOException {
         if (!Files.isRegularFile(file)) {
             return new LinkedHashMap<>();
         }
@@ -31,8 +33,8 @@ public final class ConfigSupport {
     }
 
     @SuppressWarnings("unchecked")
-    public static Map<String, Object> loadYaml(InputStream in) throws IOException {
-        Object parsed = new Yaml().load(in);
+    public static Map<String, Object> loadYaml(final InputStream in) throws IOException {
+        final Object parsed = new Yaml().load(in);
         if (parsed == null) {
             return new LinkedHashMap<>();
         }
@@ -43,7 +45,7 @@ public final class ConfigSupport {
     }
 
     /** Serializes a config map back to YAML text. */
-    public static String dumpYaml(Map<String, Object> config) {
+    public static String dumpYaml(final Map<String, Object> config) {
         return new Yaml().dump(config);
     }
 
@@ -54,21 +56,21 @@ public final class ConfigSupport {
      * @param baseDir directory relative {@code file:} paths are resolved against
      * @return the resolved secret, or null if the source is missing
      */
-    public static Secret resolveSecret(String spec, Path baseDir) {
+    public static Secret resolveSecret(final String spec, final Path baseDir) {
         if (spec == null || spec.isBlank()) {
             return null;
         }
-        String trimmed = spec.trim();
+        final String trimmed = spec.trim();
         if (trimmed.startsWith("env:")) {
-            String var = trimmed.substring(4).trim();
-            String value = System.getenv(var);
+            final String var = trimmed.substring(4).trim();
+            final String value = System.getenv(var);
             if (value == null || value.isBlank()) {
                 return null;
             }
             return new Secret(value, "env:" + var, true);
         }
         if (trimmed.startsWith("file:")) {
-            String pathSpec = trimmed.substring(5).trim();
+            final String pathSpec = trimmed.substring(5).trim();
             Path path = Path.of(pathSpec);
             if (!path.isAbsolute()) {
                 path = baseDir.resolve(pathSpec);
@@ -77,12 +79,12 @@ public final class ConfigSupport {
                 return null;
             }
             try {
-                String value = Files.readString(path).trim();
+                final String value = Files.readString(path).trim();
                 if (value.isEmpty()) {
                     return null;
                 }
                 return new Secret(value, "file:" + path, false);
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 return null;
             }
         }
@@ -90,10 +92,10 @@ public final class ConfigSupport {
         return new Secret(trimmed, "config", false);
     }
 
-    public static Map<String, Object> map(Object value) {
-        if (value instanceof Map<?, ?> map) {
-            Map<String, Object> result = new LinkedHashMap<>();
-            for (Map.Entry<?, ?> e : map.entrySet()) {
+    public static Map<String, Object> map(final Object value) {
+        if (value instanceof final Map<?, ?> map) {
+            final Map<String, Object> result = new LinkedHashMap<>();
+            for (final Map.Entry<?, ?> e : map.entrySet()) {
                 result.put(String.valueOf(e.getKey()), e.getValue());
             }
             return result;
@@ -101,32 +103,32 @@ public final class ConfigSupport {
         return new LinkedHashMap<>();
     }
 
-    public static String str(Map<String, Object> map, String key, String fallback) {
-        Object value = map.get(key);
+    public static String str(final Map<String, Object> map, final String key, final String fallback) {
+        final Object value = map.get(key);
         return value == null ? fallback : String.valueOf(value);
     }
 
-    public static int integer(Map<String, Object> map, String key, int fallback) {
-        Object value = map.get(key);
-        if (value instanceof Number n) {
+    public static int integer(final Map<String, Object> map, final String key, final int fallback) {
+        final Object value = map.get(key);
+        if (value instanceof final Number n) {
             return n.intValue();
         }
-        if (value instanceof String s) {
+        if (value instanceof final String s) {
             try {
                 return Integer.parseInt(s.trim());
-            } catch (NumberFormatException e) {
+            } catch (final NumberFormatException e) {
                 return fallback;
             }
         }
         return fallback;
     }
 
-    public static boolean bool(Map<String, Object> map, String key, boolean fallback) {
-        Object value = map.get(key);
-        if (value instanceof Boolean b) {
+    public static boolean bool(final Map<String, Object> map, final String key, final boolean fallback) {
+        final Object value = map.get(key);
+        if (value instanceof final Boolean b) {
             return b;
         }
-        if (value instanceof String s) {
+        if (value instanceof final String s) {
             return switch (s.trim().toLowerCase()) {
                 case "true", "yes", "on" -> true;
                 case "false", "no", "off" -> false;
@@ -136,11 +138,11 @@ public final class ConfigSupport {
         return fallback;
     }
 
-    public static List<String> strings(Map<String, Object> map, String key) {
-        Object value = map.get(key);
-        if (value instanceof List<?> list) {
-            List<String> result = new ArrayList<>();
-            for (Object item : list) {
+    public static List<String> strings(final Map<String, Object> map, final String key) {
+        final Object value = map.get(key);
+        if (value instanceof final List<?> list) {
+            final List<String> result = new ArrayList<>();
+            for (final Object item : list) {
                 if (item != null) {
                     result.add(String.valueOf(item));
                 }

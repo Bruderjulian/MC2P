@@ -13,51 +13,51 @@ public final class Cidr {
     private final byte[] network;
     private final int prefix;
 
-    private Cidr(byte[] network, int prefix) {
+    private Cidr(final byte[] network, final int prefix) {
         this.network = network;
         this.prefix = prefix;
     }
 
-    public static Cidr parse(String spec) {
-        String[] parts = spec.trim().split("/", 2);
+    public static Cidr parse(final String spec) {
+        final String[] parts = spec.trim().split("/", 2);
         try {
-            byte[] addr = InetAddress.getByName(parts[0]).getAddress();
-            int bits = addr.length * 8;
-            int prefix = parts.length == 2 ? Integer.parseInt(parts[1]) : bits;
+            final byte[] addr = InetAddress.getByName(parts[0]).getAddress();
+            final int bits = addr.length * 8;
+            final int prefix = parts.length == 2 ? Integer.parseInt(parts[1]) : bits;
             if (prefix < 0 || prefix > bits) {
                 throw new IllegalArgumentException("Invalid prefix length in CIDR: " + spec);
             }
             return new Cidr(addr, prefix);
-        } catch (UnknownHostException e) {
+        } catch (final UnknownHostException e) {
             throw new IllegalArgumentException("Invalid CIDR address: " + spec, e);
         }
     }
 
-    public boolean contains(InetAddress address) {
-        byte[] addr = address.getAddress();
+    public boolean contains(final InetAddress address) {
+        final byte[] addr = address.getAddress();
         if (addr.length != network.length) {
             return false;
         }
-        int fullBytes = prefix / 8;
-        int remainingBits = prefix % 8;
+        final int fullBytes = prefix / 8;
+        final int remainingBits = prefix % 8;
         for (int i = 0; i < fullBytes; i++) {
             if (addr[i] != network[i]) {
                 return false;
             }
         }
         if (remainingBits > 0) {
-            int mask = 0xFF << (8 - remainingBits);
+            final int mask = 0xFF << (8 - remainingBits);
             return (addr[fullBytes] & mask) == (network[fullBytes] & mask);
         }
         return true;
     }
 
-    public static List<Cidr> parseAll(List<String> specs) {
-        List<Cidr> result = new ArrayList<>();
+    public static List<Cidr> parseAll(final List<String> specs) {
+        final List<Cidr> result = new ArrayList<>();
         if (specs == null) {
             return result;
         }
-        for (String spec : specs) {
+        for (final String spec : specs) {
             if (spec == null || spec.isBlank()) {
                 continue;
             }
@@ -66,8 +66,8 @@ public final class Cidr {
         return result;
     }
 
-    public static boolean anyMatch(List<Cidr> rules, InetAddress address) {
-        for (Cidr rule : rules) {
+    public static boolean anyMatch(final List<Cidr> rules, final InetAddress address) {
+        for (final Cidr rule : rules) {
             if (rule.contains(address)) {
                 return true;
             }

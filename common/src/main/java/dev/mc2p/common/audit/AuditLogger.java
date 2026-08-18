@@ -7,16 +7,19 @@ import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 
 /**
- * Append-only JSON-lines audit log with size-based rotation. Destructive actions
- * <em>fail closed</em>: if the entry cannot be written, an {@link AuditWriteException} is
- * thrown and the caller must abort the action. Tokens are never logged; only the derived
+ * Append-only JSON-lines audit log with size-based rotation. Destructive
+ * actions
+ * <em>fail closed</em>: if the entry cannot be written, an
+ * {@link AuditWriteException} is
+ * thrown and the caller must abort the action. Tokens are never logged; only
+ * the derived
  * token id.
  */
 public final class AuditLogger {
 
     /** Thrown when an audit entry cannot be persisted. */
     public static final class AuditWriteException extends RuntimeException {
-        public AuditWriteException(String message, Throwable cause) {
+        public AuditWriteException(final String message, final Throwable cause) {
             super(message, cause);
         }
     }
@@ -27,7 +30,7 @@ public final class AuditLogger {
     private final Object lock = new Object();
     private long approximateSize;
 
-    public AuditLogger(Path file, int maxMb, int maxFiles) {
+    public AuditLogger(final Path file, final int maxMb, final int maxFiles) {
         this.file = file;
         this.maxBytes = maxMb * 1024L * 1024L;
         this.maxFiles = Math.max(1, maxFiles);
@@ -35,11 +38,11 @@ public final class AuditLogger {
             if (Files.isRegularFile(file)) {
                 this.approximateSize = Files.size(file);
             }
-            Path parent = file.getParent();
+            final Path parent = file.getParent();
             if (parent != null) {
                 Files.createDirectories(parent);
             }
-        } catch (Exception e) {
+        } catch (final Exception e) {
             throw new AuditWriteException("Cannot initialize audit log at " + file, e);
         }
     }
@@ -49,12 +52,14 @@ public final class AuditLogger {
      *
      * @throws AuditWriteException if the entry cannot be written (fail-closed)
      */
-    public void log(String clientName, String tokenId, String serverId, String tool, String action) {
+    public void log(final String clientName, final String tokenId, final String serverId, final String tool,
+            final String action) {
         log(clientName, tokenId, serverId, tool, action, "");
     }
 
-    public void log(String clientName, String tokenId, String serverId, String tool, String action, String detail) {
-        StringBuilder sb = new StringBuilder(256);
+    public void log(final String clientName, final String tokenId, final String serverId, final String tool,
+            final String action, final String detail) {
+        final StringBuilder sb = new StringBuilder(256);
         sb.append('{')
                 .append("\"ts\":")
                 .append(quote(Instant.now().toString()))
@@ -74,10 +79,10 @@ public final class AuditLogger {
         writeLine(sb.toString());
     }
 
-    private void writeLine(String line) {
+    private void writeLine(final String line) {
         synchronized (lock) {
             try {
-                Path parent = file.getParent();
+                final Path parent = file.getParent();
                 if (parent != null) {
                     Files.createDirectories(parent);
                 }
@@ -87,7 +92,7 @@ public final class AuditLogger {
                 if (approximateSize > maxBytes) {
                     rotate();
                 }
-            } catch (Exception e) {
+            } catch (final Exception e) {
                 throw new AuditWriteException("Failed to write audit entry to " + file, e);
             }
         }
@@ -96,25 +101,26 @@ public final class AuditLogger {
     private void rotate() {
         try {
             for (int i = maxFiles - 1; i >= 1; i--) {
-                Path from = Path.of(file + "." + i);
-                Path to = Path.of(file + "." + (i + 1));
+                final Path from = Path.of(file + "." + i);
+                final Path to = Path.of(file + "." + (i + 1));
                 if (Files.exists(from)) {
                     Files.move(from, to, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
                 }
             }
-            // rotate() is only reached right after a successful write, so the log file exists.
+            // rotate() is only reached right after a successful write, so the log file
+            // exists.
             Files.move(file, Path.of(file + ".1"), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             approximateSize = 0;
-        } catch (Exception e) {
+        } catch (final Exception e) {
             throw new AuditWriteException("Failed to rotate audit log " + file, e);
         }
     }
 
-    private static String quote(String value) {
-        StringBuilder sb = new StringBuilder(value.length() + 2);
+    private static String quote(final String value) {
+        final StringBuilder sb = new StringBuilder(value.length() + 2);
         sb.append('"');
         for (int i = 0; i < value.length(); i++) {
-            char c = value.charAt(i);
+            final char c = value.charAt(i);
             switch (c) {
                 case '"' -> sb.append("\\\"");
                 case '\\' -> sb.append("\\\\");
@@ -134,7 +140,7 @@ public final class AuditLogger {
         return sb.toString();
     }
 
-    public static String detail(CharSequence json) {
+    public static String detail(final CharSequence json) {
         return json == null ? "" : json.toString();
     }
 

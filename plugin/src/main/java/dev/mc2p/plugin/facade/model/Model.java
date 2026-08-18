@@ -7,9 +7,11 @@ import java.util.UUID;
 /** Pure data model shared by the ServerFacade interface and tool handlers. */
 public final class Model {
 
-    private Model() {}
+    private Model() {
+    }
 
-    public record Tps(double oneMin, double fiveMin, double fifteenMin) {}
+    public record Tps(double oneMin, double fiveMin, double fifteenMin) {
+    }
 
     public record Status(
             String serverId,
@@ -31,7 +33,7 @@ public final class Model {
             boolean restartAvailable) {
 
         public Map<String, Object> toMap() {
-            Map<String, Object> m = new java.util.LinkedHashMap<>();
+            final Map<String, Object> m = new java.util.LinkedHashMap<>();
             m.put("serverId", serverId);
             m.put("minecraftVersion", minecraftVersion);
             m.put("paperVersion", paperVersion);
@@ -100,7 +102,7 @@ public final class Model {
     public record PlayerDetails(PlayerInfo base, List<String> effects, boolean isOp) {
 
         public Map<String, Object> toMap() {
-            Map<String, Object> result = new java.util.LinkedHashMap<>(base.toMap());
+            final Map<String, Object> result = new java.util.LinkedHashMap<>(base.toMap());
             result.put("effects", effects);
             result.put("isOp", isOp);
             return result;
@@ -162,7 +164,7 @@ public final class Model {
     public record EntityDetails(EntityInfo base, List<String> passengers, String vehicle) {
 
         public Map<String, Object> toMap() {
-            Map<String, Object> result = new java.util.LinkedHashMap<>(base.toMap());
+            final Map<String, Object> result = new java.util.LinkedHashMap<>(base.toMap());
             result.put("passengers", passengers);
             result.put("vehicle", vehicle == null ? "" : vehicle);
             return result;

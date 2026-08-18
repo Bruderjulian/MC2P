@@ -10,15 +10,15 @@ public final class ToolRegistry {
 
     private final Map<String, ToolSpec> tools = new LinkedHashMap<>();
 
-    public void register(ToolSpec spec) {
+    public void register(final ToolSpec spec) {
         tools.put(spec.name(), spec);
     }
 
-    public ToolSpec get(String name) {
+    public ToolSpec get(final String name) {
         return tools.get(name);
     }
 
-    public boolean contains(String name) {
+    public boolean contains(final String name) {
         return tools.containsKey(name);
     }
 

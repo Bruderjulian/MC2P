@@ -4,12 +4,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * A thread-safe token-bucket rate limiter keyed by client identity (remote IP or token
+ * A thread-safe token-bucket rate limiter keyed by client identity (remote IP
+ * or token
  * id). Runs entirely off the main thread.
  */
 public final class TokenBucketRateLimiter {
 
-    public record Config(double tokensPerSecond, int burst) {}
+    public record Config(double tokensPerSecond, int burst) {
+    }
 
     private static final class Bucket {
         final double rate;
@@ -20,13 +22,13 @@ public final class TokenBucketRateLimiter {
             final double tokens;
             final long nanos;
 
-            State(double tokens, long nanos) {
+            State(final double tokens, final long nanos) {
                 this.tokens = tokens;
                 this.nanos = nanos;
             }
         }
 
-        Bucket(double rate, double capacity) {
+        Bucket(final double rate, final double capacity) {
             this.rate = rate;
             this.capacity = capacity;
             this.state = new AtomicReference<>(new State(capacity, System.nanoTime()));
@@ -36,7 +38,7 @@ public final class TokenBucketRateLimiter {
     private final Config config;
     private final ConcurrentHashMap<String, Bucket> buckets = new ConcurrentHashMap<>();
 
-    public TokenBucketRateLimiter(Config config) {
+    public TokenBucketRateLimiter(final Config config) {
         this.config = config;
     }
 
@@ -49,11 +51,11 @@ public final class TokenBucketRateLimiter {
      *
      * @return true if allowed, false if rate-limited
      */
-    public boolean tryAcquire(String key) {
+    public boolean tryAcquire(final String key) {
         if (config == null || config.tokensPerSecond() <= 0) {
             return true;
         }
-        Bucket bucket = buckets.computeIfAbsent(key, k -> new Bucket(config.tokensPerSecond(), config.burst()));
+        final Bucket bucket = buckets.computeIfAbsent(key, k -> new Bucket(config.tokensPerSecond(), config.burst()));
         long now = System.nanoTime();
         Bucket.State current = bucket.state.get();
         double elapsedSec = (now - current.nanos) / 1_000_000_000.0;

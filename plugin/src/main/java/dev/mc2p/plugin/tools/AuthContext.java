@@ -7,7 +7,7 @@ public record AuthContext(
         RestrictionsConfig restrictions, String name, String tokenId, String remoteIp, String source) {
 
     public static AuthContext of(
-            RestrictionsConfig restrictions, String name, String tokenId, String remoteIp, String source) {
+            final RestrictionsConfig restrictions, final String name, final String tokenId, final String remoteIp, final String source) {
         return new AuthContext(restrictions, name, tokenId, remoteIp, source);
     }
 

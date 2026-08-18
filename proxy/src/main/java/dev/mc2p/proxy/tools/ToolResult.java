@@ -10,13 +10,13 @@ public final class ToolResult {
 
     private ToolResult() {}
 
-    public static CallToolResult success(Object result) {
+    public static CallToolResult success(final Object result) {
         return CallToolResult.builder()
                 .content(List.of(TextContent.builder(Json.toJson(result)).build()))
                 .build();
     }
 
-    public static CallToolResult error(String message) {
+    public static CallToolResult error(final String message) {
         return CallToolResult.builder()
                 .content(List.of(TextContent.builder("{\"error\":\"" + escape(message) + "\"}")
                         .build()))
@@ -24,10 +24,10 @@ public final class ToolResult {
                 .build();
     }
 
-    private static String escape(String s) {
-        StringBuilder sb = new StringBuilder(s.length());
+    private static String escape(final String s) {
+        final StringBuilder sb = new StringBuilder(s.length());
         for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
+            final char c = s.charAt(i);
             switch (c) {
                 case '"' -> sb.append("\\\"");
                 case '\\' -> sb.append("\\\\");

@@ -34,13 +34,17 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 
 /**
- * The MC2P proxy plugin (Velocity). Hosts the single public MCP endpoint and routes tool
+ * The MC2P proxy plugin (Velocity). Hosts the single public MCP endpoint and
+ * routes tool
  * calls to backend Paper servers over {@code mc2p:rpc}. Loaded via
  * {@code velocity-plugin.json} with constructor injection.
  */
 public final class McpProxyPlugin {
 
-    /** Trust window granted by a {@code hello} handshake; proxy re-sends hello before each call. */
+    /**
+     * Trust window granted by a {@code hello} handshake; proxy re-sends hello
+     * before each call.
+     */
     private static final long HELLO_WINDOW_NANOS = TimeUnit.MINUTES.toNanos(5);
 
     private final ProxyServer server;
@@ -60,10 +64,10 @@ public final class McpProxyPlugin {
     private McpSyncServer mcpServer;
 
     public McpProxyPlugin(
-            ProxyServer server,
-            Logger logger,
-            PluginDescription description,
-            @com.velocitypowered.api.plugin.annotation.DataDirectory Path dataDirectory) {
+            final ProxyServer server,
+            final Logger logger,
+            final PluginDescription description,
+            @com.velocitypowered.api.plugin.annotation.DataDirectory final Path dataDirectory) {
         this.server = server;
         this.logger = logger;
         this.version = description.getVersion().orElse("unknown");
@@ -72,35 +76,38 @@ public final class McpProxyPlugin {
     }
 
     @Subscribe
-    public void onProxyInitialize(ProxyInitializeEvent event) {
+    public void onProxyInitialize(final ProxyInitializeEvent event) {
         try {
             init();
             new Mc2pCommand(this).register();
             CommandAPI.onEnable();
-        } catch (RuntimeException e) {
+        } catch (final RuntimeException e) {
             logger.error("MC2P failed to start: {}", e.getMessage(), e);
         }
     }
 
     @Subscribe
-    public void onProxyShutdown(ProxyShutdownEvent event) {
+    public void onProxyShutdown(final ProxyShutdownEvent event) {
         teardown();
         CommandAPI.unregister("mc2p");
         CommandAPI.onDisable();
     }
 
     @Subscribe
-    public void onServerRegistered(ServerRegisteredEvent event) {
+    public void onServerRegistered(final ServerRegisteredEvent event) {
         registerBackend(event.registeredServer());
     }
 
     @Subscribe
-    public void onServerUnregistered(ServerUnregisteredEvent event) {
+    public void onServerUnregistered(final ServerUnregisteredEvent event) {
         backendClient.unregisterServer(
                 event.unregisteredServer().getServerInfo().getName());
     }
 
-    /** Applies (or re-applies) the configuration; fully tears down and rebuilds the runtime. */
+    /**
+     * Applies (or re-applies) the configuration; fully tears down and rebuilds the
+     * runtime.
+     */
     public synchronized void init() {
         teardown();
         config = ProxyConfig.load(loadConfig());
@@ -125,7 +132,7 @@ public final class McpProxyPlugin {
             logger.info("  MC2P_PROXY_SECRET: {}", proxySecret);
         }
 
-        String[] channelParts = config.rpc().channel().split(":", 2);
+        final String[] channelParts = config.rpc().channel().split(":", 2);
         channel = channelParts.length == 2
                 ? MinecraftChannelIdentifier.create(channelParts[0], channelParts[1])
                 : MinecraftChannelIdentifier.create("mc2p", config.rpc().channel());
@@ -141,16 +148,16 @@ public final class McpProxyPlugin {
         rpcListener = new RpcListener(backendClient, channel);
         server.getEventManager().register(this, rpcListener);
         server.getEventManager().register(this, this);
-        for (RegisteredServer registered : server.getAllServers()) {
+        for (final RegisteredServer registered : server.getAllServers()) {
             registerBackend(registered);
         }
 
-        HttpServletStreamableServerTransportProvider transport =
-                McpProxyBootstrap.transport(config.mcp().endpoint());
-        mcpServer =
-                McpProxyBootstrap.build(backendClient, server, audit, config.serverId(), version, startedAt, transport);
+        final HttpServletStreamableServerTransportProvider transport = McpProxyBootstrap
+                .transport(config.mcp().endpoint());
+        mcpServer = McpProxyBootstrap.build(backendClient, server, audit, config.serverId(), version, startedAt,
+                transport);
 
-        HttpEndpointConfig http = new HttpEndpointConfig(
+        final HttpEndpointConfig http = new HttpEndpointConfig(
                 config.mcp().bind(),
                 config.mcp().port(),
                 config.mcp().endpoint(),
@@ -178,9 +185,9 @@ public final class McpProxyPlugin {
                 RelayTools.count());
     }
 
-    private void registerBackend(RegisteredServer registered) {
-        String name = registered.getServerInfo().getName();
-        String serverId = config.servers().getOrDefault(name, name);
+    private void registerBackend(final RegisteredServer registered) {
+        final String name = registered.getServerInfo().getName();
+        final String serverId = config.servers().getOrDefault(name, name);
         backendClient.registerServer(serverId, registered);
         logger.info("MC2P registered backend {} -> {}", name, serverId);
     }
@@ -202,10 +209,10 @@ public final class McpProxyPlugin {
         backendClient = null;
     }
 
-    private String resolveProxySecret(ProxyConfig config) {
-        String env = config.rpc().secretEnv();
+    private String resolveProxySecret(final ProxyConfig config) {
+        final String env = config.rpc().secretEnv();
         if (env != null && !env.isBlank()) {
-            String value = System.getenv(env);
+            final String value = System.getenv(env);
             if (value != null && !value.isBlank()) {
                 return value;
             }
@@ -213,45 +220,50 @@ public final class McpProxyPlugin {
         return SetupSupport.readSecretFile(dataDirectory, SetupSupport.PROXY_SECRET_FILE);
     }
 
-    /** Ensures a proxy secret exists (env var or the proxy-secret file), generating and persisting one if not. */
-    private String ensureProxySecret(ProxyConfig config) {
-        String secret = resolveProxySecret(config);
+    /**
+     * Ensures a proxy secret exists (env var or the proxy-secret file), generating
+     * and persisting one if not.
+     */
+    private String ensureProxySecret(final ProxyConfig config) {
+        final String secret = resolveProxySecret(config);
         if (secret != null) {
             return secret;
         }
-        String generated = Tokens.generateToken();
+        final String generated = Tokens.generateToken();
         try {
             SetupSupport.writeSecretFile(dataDirectory, SetupSupport.PROXY_SECRET_FILE, generated);
-        } catch (java.io.IOException e) {
+        } catch (final java.io.IOException e) {
             throw new IllegalStateException("Failed to persist the proxy secret", e);
         }
         return generated;
     }
 
     private Map<String, Object> loadConfig() {
-        Path file = dataDirectory.resolve("config.yml");
+        final Path file = dataDirectory.resolve("config.yml");
         try {
-            Map<String, Object> parsed = ConfigSupport.loadYaml(file);
+            final Map<String, Object> parsed = ConfigSupport.loadYaml(file);
             if (parsed.isEmpty()) {
                 logger.warn("MC2P: config.yml is missing or empty; using defaults. Run /mc2p status to verify.");
             }
             return parsed;
-        } catch (IOException e) {
+        } catch (final IOException e) {
             throw new IllegalStateException("cannot read config.yml", e);
         }
     }
 
-    /** Forwards a backend RPC push to connected MCP clients (off the proxy thread). */
+    /**
+     * Forwards a backend RPC push to connected MCP clients (off the proxy thread).
+     */
     private void notifyClients() {
-        McpSyncServer mcp = this.mcpServer;
+        final McpSyncServer mcp = this.mcpServer;
         if (mcp == null) {
             return;
         }
-        Thread notifier = new Thread(
+        final Thread notifier = new Thread(
                 () -> {
                     try {
                         mcp.notifyResourcesListChanged();
-                    } catch (RuntimeException e) {
+                    } catch (final RuntimeException e) {
                         logger.warn("MC2P: failed to notify resource list change: {}", e.getMessage());
                     }
                 },
@@ -287,11 +299,12 @@ public final class McpProxyPlugin {
     }
 
     /**
-     * Creates a default-named token if the store has no active tokens and returns the
+     * Creates a default-named token if the store has no active tokens and returns
+     * the
      * freshly generated plaintext (shown exactly once).
      */
     public Map<String, String> ensureTokens() {
-        Map<String, String> generated = new java.util.LinkedHashMap<>();
+        final Map<String, String> generated = new java.util.LinkedHashMap<>();
         if (!tokens.snapshot().isEmpty()) {
             return generated;
         }
@@ -299,12 +312,18 @@ public final class McpProxyPlugin {
         return generated;
     }
 
-    /** The active proxy secret (env var or the proxy-secret file), or null when unset. */
+    /**
+     * The active proxy secret (env var or the proxy-secret file), or null when
+     * unset.
+     */
     public String proxySecret() {
         return config == null ? null : resolveProxySecret(config);
     }
 
-    /** Ensures a proxy secret exists (env var or proxy-secret file), generating one if needed. */
+    /**
+     * Ensures a proxy secret exists (env var or proxy-secret file), generating one
+     * if needed.
+     */
     public String ensureProxySecret() {
         return ensureProxySecret(config);
     }
@@ -314,7 +333,7 @@ public final class McpProxyPlugin {
         if (backendClient == null) {
             return;
         }
-        for (RegisteredServer registered : server.getAllServers()) {
+        for (final RegisteredServer registered : server.getAllServers()) {
             registerBackend(registered);
         }
     }

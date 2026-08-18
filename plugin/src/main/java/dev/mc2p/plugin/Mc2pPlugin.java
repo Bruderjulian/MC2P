@@ -31,7 +31,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The MC2P backend Paper plugin. Serves as a standalone MCP server (single TLS port) or,
+ * The MC2P backend Paper plugin. Serves as a standalone MCP server (single TLS
+ * port) or,
  * behind a proxy, as a zero-port RPC backend over {@code mc2p:rpc}.
  */
 public final class Mc2pPlugin extends JavaPlugin {
@@ -62,7 +63,7 @@ public final class Mc2pPlugin extends JavaPlugin {
         try {
             ConfigFiles.ensureInitialConfig(this, getDataFolder().toPath());
             applyConfig();
-        } catch (RuntimeException e) {
+        } catch (final RuntimeException e) {
             log.error("MC2P failed to start: {}", e.getMessage(), e);
             getServer().getPluginManager().disablePlugin(this);
             return;
@@ -80,11 +81,14 @@ public final class Mc2pPlugin extends JavaPlugin {
         log.info("MC2P disabled");
     }
 
-    /** Applies (or re-applies) the configuration; fully tears down and rebuilds the runtime. */
+    /**
+     * Applies (or re-applies) the configuration; fully tears down and rebuilds the
+     * runtime.
+     */
     public void applyConfig() {
         teardown();
-        Path dataDir = getDataFolder().toPath();
-        Path configFile = ConfigFiles.activeConfigFile(dataDir);
+        final Path dataDir = getDataFolder().toPath();
+        final Path configFile = ConfigFiles.activeConfigFile(dataDir);
         config = BackendConfig.load(loadConfigYaml(configFile));
         mode = resolveMode(config, configFile);
 
@@ -134,14 +138,14 @@ public final class Mc2pPlugin extends JavaPlugin {
         }
     }
 
-    private void startStandalone(Path dataDir) {
-        BackendConfig.McpSection mcp = config.mcp();
-        BackendConfig.McpSection.TlsSection tls = mcp.tls();
-        HttpServletStreamableServerTransportProvider transport = McpServerBootstrap.transport(mcp.endpoint());
+    private void startStandalone(final Path dataDir) {
+        final BackendConfig.McpSection mcp = config.mcp();
+        final BackendConfig.McpSection.TlsSection tls = mcp.tls();
+        final HttpServletStreamableServerTransportProvider transport = McpServerBootstrap.transport(mcp.endpoint());
         mcpServer = McpServerBootstrap.build(
                 registry, facade, invoker, transport, getPluginMeta().getVersion(), mainThread);
 
-        HttpEndpointConfig http = new HttpEndpointConfig(
+        final HttpEndpointConfig http = new HttpEndpointConfig(
                 mcp.bind(),
                 mcp.port(),
                 mcp.endpoint(),
@@ -165,8 +169,8 @@ public final class Mc2pPlugin extends JavaPlugin {
         httpServer.start();
     }
 
-    private void startBackendMode(Path dataDir) {
-        String secret = resolveProxySecret();
+    private void startBackendMode(final Path dataDir) {
+        final String secret = resolveProxySecret();
         if (secret == null || secret.isBlank()) {
             log.warn(
                     "MC2P backend mode: proxy secret ({}) is not set - the proxy will not be able to authenticate",
@@ -209,16 +213,19 @@ public final class Mc2pPlugin extends JavaPlugin {
         }
     }
 
-    /** Determines the effective mode: standalone | backend (auto: backend behind a known proxy). */
-    private String resolveMode(BackendConfig config, Path configFile) {
+    /**
+     * Determines the effective mode: standalone | backend (auto: backend behind a
+     * known proxy).
+     */
+    private String resolveMode(final BackendConfig config, final Path configFile) {
         if (ConfigFiles.BACKEND_FILE.equals(configFile.getFileName().toString())) {
             return "backend";
         }
-        String configured = config.mode();
+        final String configured = config.mode();
         if (!"auto".equals(configured)) {
             return configured;
         }
-        boolean behindProxy = isBehindBungee() || proxySecretPresent();
+        final boolean behindProxy = isBehindBungee() || proxySecretPresent();
         return behindProxy ? "backend" : "standalone";
     }
 
@@ -226,11 +233,14 @@ public final class Mc2pPlugin extends JavaPlugin {
         return resolveProxySecret() != null;
     }
 
-    /** The shared proxy secret: the configured env var first, then plugins/MC2P/proxy-secret. */
+    /**
+     * The shared proxy secret: the configured env var first, then
+     * plugins/MC2P/proxy-secret.
+     */
     public String resolveProxySecret() {
-        String env = config.proxy().secretEnv();
+        final String env = config.proxy().secretEnv();
         if (env != null && !env.isBlank()) {
-            String value = System.getenv(env);
+            final String value = System.getenv(env);
             if (value != null && !value.isBlank()) {
                 return value;
             }
@@ -240,26 +250,26 @@ public final class Mc2pPlugin extends JavaPlugin {
 
     private boolean isBehindBungee() {
         try {
-            Path spigotYml = getDataFolder().getParentFile().toPath().resolve("spigot.yml");
+            final Path spigotYml = getDataFolder().getParentFile().toPath().resolve("spigot.yml");
             if (java.nio.file.Files.isRegularFile(spigotYml)) {
-                YamlConfiguration spigot = YamlConfiguration.loadConfiguration(spigotYml.toFile());
+                final YamlConfiguration spigot = YamlConfiguration.loadConfiguration(spigotYml.toFile());
                 return spigot.getBoolean("settings.bungeecord", false);
             }
-        } catch (Exception ignored) {
+        } catch (final Exception ignored) {
         }
         return false;
     }
 
-    private Map<String, Object> loadConfigYaml(Path configFile) {
+    private Map<String, Object> loadConfigYaml(final Path configFile) {
         try {
-            Map<String, Object> parsed = ConfigSupport.loadYaml(configFile);
+            final Map<String, Object> parsed = ConfigSupport.loadYaml(configFile);
             if (parsed.isEmpty()) {
                 log.warn(
                         "MC2P: {} is missing or empty; using defaults. Run /mc2p status to verify.",
                         configFile.getFileName());
             }
             return parsed;
-        } catch (IOException e) {
+        } catch (final IOException e) {
             throw new IllegalStateException("cannot read " + configFile.getFileName(), e);
         }
     }
@@ -303,11 +313,12 @@ public final class Mc2pPlugin extends JavaPlugin {
     }
 
     /**
-     * Creates a default-named token if the store has no active tokens and returns the
+     * Creates a default-named token if the store has no active tokens and returns
+     * the
      * freshly generated plaintext (shown exactly once).
      */
     public Map<String, String> ensureTokens() {
-        Map<String, String> generated = new java.util.LinkedHashMap<>();
+        final Map<String, String> generated = new java.util.LinkedHashMap<>();
         if (!tokens.snapshot().isEmpty()) {
             return generated;
         }
@@ -315,41 +326,45 @@ public final class Mc2pPlugin extends JavaPlugin {
         return generated;
     }
 
-    /** Auto-provisions missing API tokens on first standalone run; logs them once. */
+    /**
+     * Auto-provisions missing API tokens on first standalone run; logs them once.
+     */
     private void provisionMissingTokens() {
-        Map<String, String> generated = ensureTokens();
+        final Map<String, String> generated = ensureTokens();
         if (generated.isEmpty()) {
             return;
         }
         log.info("MC2P: no API tokens configured; generated the following (shown once):");
-        for (Map.Entry<String, String> e : generated.entrySet()) {
+        for (final Map.Entry<String, String> e : generated.entrySet()) {
             log.info("  {}: {}", e.getKey(), e.getValue());
         }
         log.info("MC2P: run /mc2p setup to print the agent client config for this server.");
     }
 
     /**
-     * Sends the resource-list-changed notification to connected agents (off the main
-     * thread). In backend mode the notification is relayed to the proxy as an RPC push.
+     * Sends the resource-list-changed notification to connected agents (off the
+     * main
+     * thread). In backend mode the notification is relayed to the proxy as an RPC
+     * push.
      */
     public void notifyPlayersChanged() {
         if (rpcServer != null) {
             try {
                 rpcServer.notifyEvent("players", Map.of());
-            } catch (RuntimeException e) {
+            } catch (final RuntimeException e) {
                 log.warn("MC2P: failed to push player change to proxy: {}", e.getMessage());
             }
             return;
         }
-        McpSyncServer server = this.mcpServer;
+        final McpSyncServer server = this.mcpServer;
         if (server == null) {
             return;
         }
-        Thread notifier = new Thread(
+        final Thread notifier = new Thread(
                 () -> {
                     try {
                         server.notifyResourcesListChanged();
-                    } catch (RuntimeException e) {
+                    } catch (final RuntimeException e) {
                         log.warn("MC2P: failed to notify resource list change: {}", e.getMessage());
                     }
                 },

@@ -7,14 +7,15 @@ import jakarta.servlet.http.HttpServletRequestWrapper;
 import java.io.IOException;
 
 /**
- * Caps the request body size for endpoints without a reliable Content-Length. Used by the
+ * Caps the request body size for endpoints without a reliable Content-Length.
+ * Used by the
  * MCP auth filter so oversized payloads are rejected before dispatch.
  */
 final class LimitedHttpServletRequest extends HttpServletRequestWrapper {
 
     private final int limit;
 
-    LimitedHttpServletRequest(HttpServletRequest request, int limit) {
+    LimitedHttpServletRequest(final HttpServletRequest request, final int limit) {
         super(request);
         this.limit = limit;
     }
@@ -31,7 +32,7 @@ final class LimitedHttpServletRequest extends HttpServletRequestWrapper {
 
     @Override
     public ServletInputStream getInputStream() throws IOException {
-        ServletInputStream in = super.getInputStream();
+        final ServletInputStream in = super.getInputStream();
         return new ServletInputStream() {
             private int remaining = limit;
 
@@ -40,7 +41,7 @@ final class LimitedHttpServletRequest extends HttpServletRequestWrapper {
                 if (remaining <= 0) {
                     return -1;
                 }
-                int r = in.read();
+                final int r = in.read();
                 if (r != -1) {
                     remaining--;
                 }
@@ -48,12 +49,12 @@ final class LimitedHttpServletRequest extends HttpServletRequestWrapper {
             }
 
             @Override
-            public int read(byte[] b, int off, int len) throws IOException {
+            public int read(final byte[] b, final int off, final int len) throws IOException {
                 if (remaining <= 0) {
                     return -1;
                 }
-                int toRead = Math.min(len, remaining);
-                int r = in.read(b, off, toRead);
+                final int toRead = Math.min(len, remaining);
+                final int r = in.read(b, off, toRead);
                 if (r > 0) {
                     remaining -= r;
                 }
@@ -71,7 +72,7 @@ final class LimitedHttpServletRequest extends HttpServletRequestWrapper {
             }
 
             @Override
-            public void setReadListener(ReadListener readListener) {
+            public void setReadListener(final ReadListener readListener) {
                 in.setReadListener(readListener);
             }
         };

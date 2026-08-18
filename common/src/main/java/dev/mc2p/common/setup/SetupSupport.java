@@ -9,52 +9,59 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Shared in-plugin setup helpers: the static agent-side {@code mcpServers.json} template
+ * Shared in-plugin setup helpers: the static agent-side {@code mcpServers.json}
+ * template
  * and 0600 secret files for the proxy secret fallback.
  */
 public final class SetupSupport {
 
-    /** File name of the proxy secret fallback inside each plugin's data directory. */
+    /**
+     * File name of the proxy secret fallback inside each plugin's data directory.
+     */
     public static final String PROXY_SECRET_FILE = "proxy-secret";
 
-    private SetupSupport() {}
+    private SetupSupport() {
+    }
 
     /**
-     * Reads a secret from {@code dataDir/name}, or returns null when the file is missing
+     * Reads a secret from {@code dataDir/name}, or returns null when the file is
+     * missing
      * or blank.
      */
-    public static String readSecretFile(Path dataDir, String name) {
-        Path file = dataDir.resolve(name);
+    public static String readSecretFile(final Path dataDir, final String name) {
+        final Path file = dataDir.resolve(name);
         if (!Files.isRegularFile(file)) {
             return null;
         }
         try {
-            String value = Files.readString(file).trim();
+            final String value = Files.readString(file).trim();
             return value.isEmpty() ? null : value;
-        } catch (IOException e) {
+        } catch (final IOException e) {
             return null;
         }
     }
 
     /** Writes {@code dataDir/name} with the secret and 0600 permissions. */
-    public static void writeSecretFile(Path dataDir, String name, String secret) throws IOException {
+    public static void writeSecretFile(final Path dataDir, final String name, final String secret) throws IOException {
         Files.createDirectories(dataDir);
-        Path file = dataDir.resolve(name);
+        final Path file = dataDir.resolve(name);
         Files.writeString(file, secret);
         try {
             Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-------"));
-        } catch (UnsupportedOperationException ignored) {
+        } catch (final UnsupportedOperationException ignored) {
             // non-POSIX filesystem
         }
     }
 
     /**
-     * The static MCP client config; only {@code <HOST>}, the port, and {@code <TOKEN>}
-     * vary. The admin replaces the placeholders with their public host and the token of
+     * The static MCP client config; only {@code <HOST>}, the port, and
+     * {@code <TOKEN>}
+     * vary. The admin replaces the placeholders with their public host and the
+     * token of
      * the permissions they grant the agent.
      */
-    public static String clientConfigTemplate(int port) {
-        Map<String, Object> mcpServers = new LinkedHashMap<>();
+    public static String clientConfigTemplate(final int port) {
+        final Map<String, Object> mcpServers = new LinkedHashMap<>();
         mcpServers.put(
                 "mcpServers",
                 Map.of(

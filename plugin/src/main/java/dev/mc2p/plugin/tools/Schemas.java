@@ -9,8 +9,8 @@ public final class Schemas {
 
     private Schemas() {}
 
-    public static Map<String, Object> object(Map<String, Object> properties, List<String> required) {
-        Map<String, Object> schema = new LinkedHashMap<>();
+    public static Map<String, Object> object(final Map<String, Object> properties, final List<String> required) {
+        final Map<String, Object> schema = new LinkedHashMap<>();
         schema.put("type", "object");
         schema.put("properties", properties);
         if (required != null && !required.isEmpty()) {
@@ -20,28 +20,28 @@ public final class Schemas {
         return schema;
     }
 
-    public static Map<String, Object> str(String description) {
+    public static Map<String, Object> str(final String description) {
         return map("string", description, null);
     }
 
-    public static Map<String, Object> str(String description, List<String> enumValues) {
+    public static Map<String, Object> str(final String description, final List<String> enumValues) {
         return map("string", description, enumValues);
     }
 
-    public static Map<String, Object> integer(String description) {
+    public static Map<String, Object> integer(final String description) {
         return map("integer", description, null);
     }
 
-    public static Map<String, Object> num(String description) {
+    public static Map<String, Object> num(final String description) {
         return map("number", description, null);
     }
 
-    public static Map<String, Object> bool(String description) {
+    public static Map<String, Object> bool(final String description) {
         return map("boolean", description, null);
     }
 
-    private static Map<String, Object> map(String type, String description, List<String> enumValues) {
-        Map<String, Object> m = new LinkedHashMap<>();
+    private static Map<String, Object> map(final String type, final String description, final List<String> enumValues) {
+        final Map<String, Object> m = new LinkedHashMap<>();
         m.put("type", type);
         if (description != null) {
             m.put("description", description);

@@ -137,9 +137,9 @@ public final class PaperServerFacade implements ServerFacade {
                         w.getName(),
                         dimensionName(w.getEnvironment()),
                         new int[] {
-                            w.getSpawnLocation().getBlockX(),
-                            w.getSpawnLocation().getBlockY(),
-                            w.getSpawnLocation().getBlockZ()
+                                w.getSpawnLocation().getBlockX(),
+                                w.getSpawnLocation().getBlockY(),
+                                w.getSpawnLocation().getBlockZ()
                         },
                         w.getLoadedChunks().length));
             }
@@ -267,8 +267,8 @@ public final class PaperServerFacade implements ServerFacade {
         });
 
         // Phase 2 (off-thread): read blocks from the captured snapshots only.
-        int volume =
-                (int) (Math.min(x2 - x1 + 1L, 2000L) * Math.min(y2 - y1 + 1L, 400L) * Math.min(z2 - z1 + 1L, 2000L));
+        int volume = (int) (Math.min(x2 - x1 + 1L, 2000L) * Math.min(y2 - y1 + 1L, 400L)
+                * Math.min(z2 - z1 + 1L, 2000L));
         if (volume > cap) {
             volume = cap;
         }
@@ -284,8 +284,7 @@ public final class PaperServerFacade implements ServerFacade {
                     final int localX = x & 15;
                     final int localZ = z & 15;
                     final Material material = snapshot.getBlockType(localX, y, localZ);
-                    final String blockData =
-                            snapshot.getBlockData(localX, y, localZ).getAsString();
+                    final String blockData = snapshot.getBlockData(localX, y, localZ).getAsString();
                     final int light = snapshot.getBlockEmittedLight(localX, y, localZ);
                     final int skyLight = snapshot.getBlockSkyLight(localX, y, localZ);
                     result.add(new BlockInfo(
@@ -522,7 +521,8 @@ public final class PaperServerFacade implements ServerFacade {
     @Override
     public String restartStrategyHealth() {
         return switch (restartStrategy) {
-            case "auto" -> "auto (spigot restart if a restart-script is configured, else host-restart via graceful stop)";
+            case "auto" ->
+                "auto (spigot restart if a restart-script is configured, else host-restart via graceful stop)";
             case "spigot-restart" -> "spigot restart (requires spigot.yml settings.restart-script)";
             case "host-restart" -> "graceful stop; the host panel auto-restart will reboot";
             case "disabled" -> "disabled by configuration";
@@ -601,9 +601,9 @@ public final class PaperServerFacade implements ServerFacade {
     private static double[] safeTps() {
         try {
             final double[] tps = Bukkit.getTPS();
-            return tps == null ? new double[] {20.0} : tps;
+            return tps == null ? new double[] { 20.0 } : tps;
         } catch (final Throwable t) {
-            return new double[] {20.0};
+            return new double[] { 20.0 };
         }
     }
 

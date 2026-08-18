@@ -25,16 +25,16 @@ public final class McpServerBootstrap {
     private McpServerBootstrap() {}
 
     public static McpSyncServer build(
-            ToolRegistry registry,
-            ServerFacade facade,
-            ToolInvoker invoker,
-            HttpServletStreamableServerTransportProvider transport,
-            String version,
-            MainThread mainThread) {
+            final ToolRegistry registry,
+            final ServerFacade facade,
+            final ToolInvoker invoker,
+            final HttpServletStreamableServerTransportProvider transport,
+            final String version,
+            final MainThread mainThread) {
 
-        List<SyncToolSpecification> tools = new ArrayList<>();
-        for (ToolSpec spec : registry.all()) {
-            McpSchema.Tool tool = McpSchema.Tool.builder(spec.name(), spec.inputSchema())
+        final List<SyncToolSpecification> tools = new ArrayList<>();
+        for (final ToolSpec spec : registry.all()) {
+            final McpSchema.Tool tool = McpSchema.Tool.builder(spec.name(), spec.inputSchema())
                     .description(spec.description())
                     .build();
             tools.add(SyncToolSpecification.builder()
@@ -44,7 +44,7 @@ public final class McpServerBootstrap {
                     .build());
         }
 
-        SyncResourceSpecification serverResource = new SyncResourceSpecification(
+        final SyncResourceSpecification serverResource = new SyncResourceSpecification(
                 McpSchema.Resource.builder("mc2p://server", "MC2P server")
                         .description("Server identity and health")
                         .mimeType("application/json")
@@ -56,7 +56,7 @@ public final class McpServerBootstrap {
                                 .build()))
                         .build());
 
-        SyncResourceSpecification statusResource = new SyncResourceSpecification(
+        final SyncResourceSpecification statusResource = new SyncResourceSpecification(
                 McpSchema.Resource.builder("mc2p://status", "MC2P status")
                         .description("Live server status")
                         .mimeType("application/json")
@@ -80,18 +80,18 @@ public final class McpServerBootstrap {
                 .build();
     }
 
-    private static AuthContext authFrom(io.modelcontextprotocol.common.McpTransportContext context) {
+    private static AuthContext authFrom(final io.modelcontextprotocol.common.McpTransportContext context) {
         if (context == null) {
             return AuthContext.unauthenticated();
         }
-        Object restrictions = context.get(McpRequestContextExtractor.KEY_RESTRICTIONS);
-        Object tokenId = context.get(McpRequestContextExtractor.KEY_TOKEN_ID);
-        Object remoteIp = context.get(McpRequestContextExtractor.KEY_REMOTE_IP);
-        Object clientName = context.get(McpRequestContextExtractor.KEY_CLIENT_NAME);
-        dev.mc2p.common.config.RestrictionsConfig parsed =
-                restrictions instanceof dev.mc2p.common.config.RestrictionsConfig rc
+        final Object restrictions = context.get(McpRequestContextExtractor.KEY_RESTRICTIONS);
+        final Object tokenId = context.get(McpRequestContextExtractor.KEY_TOKEN_ID);
+        final Object remoteIp = context.get(McpRequestContextExtractor.KEY_REMOTE_IP);
+        final Object clientName = context.get(McpRequestContextExtractor.KEY_CLIENT_NAME);
+        final dev.mc2p.common.config.RestrictionsConfig parsed =
+                restrictions instanceof final dev.mc2p.common.config.RestrictionsConfig rc
                         ? rc
-                        : restrictions instanceof java.util.Map<?, ?> m
+                        : restrictions instanceof final java.util.Map<?, ?> m
                                 ? dev.mc2p.common.config.RestrictionsConfig.load((java.util.Map<String, Object>) m)
                                 : null;
         return new AuthContext(
@@ -103,8 +103,8 @@ public final class McpServerBootstrap {
     }
 
     /** Convenience: builds the transport provider with MC2P's security wiring. */
-    public static HttpServletStreamableServerTransportProvider transport(String endpoint) {
-        HttpServletStreamableServerTransportProvider.Builder builder =
+    public static HttpServletStreamableServerTransportProvider transport(final String endpoint) {
+        final HttpServletStreamableServerTransportProvider.Builder builder =
                 HttpServletStreamableServerTransportProvider.builder()
                         .jsonMapper(McpJsonDefaults.getMapper())
                         .mcpEndpoint(endpoint)

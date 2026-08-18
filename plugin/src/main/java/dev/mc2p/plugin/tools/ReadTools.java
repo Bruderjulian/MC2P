@@ -16,8 +16,8 @@ public final class ReadTools {
 
     private ReadTools() {}
 
-    public static void register(ToolRegistry registry, ServerFacade facade, BackendConfig config) {
-        LimitsSection limits = config.limits();
+    public static void register(final ToolRegistry registry, final ServerFacade facade, final BackendConfig config) {
+        final LimitsSection limits = config.limits();
 
         registry.register(new ToolSpec(
                 "server_status",
@@ -34,8 +34,8 @@ public final class ReadTools {
                 "Lists worlds with dimension, spawn and loaded-chunk counts.",
                 Schemas.object(Map.of(), List.of()),
                 (args, auth) -> {
-                    List<Map<String, Object>> worlds = new java.util.ArrayList<>();
-                    for (WorldInfo w : facade.worlds()) {
+                    final List<Map<String, Object>> worlds = new java.util.ArrayList<>();
+                    for (final WorldInfo w : facade.worlds()) {
                         worlds.add(w.toMap());
                     }
                     return Map.of("serverId", facade.serverId(), "worlds", worlds);
@@ -48,8 +48,8 @@ public final class ReadTools {
                 "Lists loaded plugins with version and enabled state.",
                 Schemas.object(Map.of(), List.of()),
                 (args, auth) -> {
-                    List<Map<String, Object>> plugins = new java.util.ArrayList<>();
-                    for (var p : facade.plugins()) {
+                    final List<Map<String, Object>> plugins = new java.util.ArrayList<>();
+                    for (final var p : facade.plugins()) {
                         plugins.add(p.toMap());
                     }
                     return Map.of("serverId", facade.serverId(), "plugins", plugins);
@@ -62,8 +62,8 @@ public final class ReadTools {
                 "Lists online players with uuid, name, ping, gamemode, health, food, level and location.",
                 Schemas.object(Map.of(), List.of()),
                 (args, auth) -> {
-                    List<Map<String, Object>> players = new java.util.ArrayList<>();
-                    for (PlayerInfo p : facade.players()) {
+                    final List<Map<String, Object>> players = new java.util.ArrayList<>();
+                    for (final PlayerInfo p : facade.players()) {
                         players.add(p.toMap());
                     }
                     return Map.of("serverId", facade.serverId(), "players", players);
@@ -98,8 +98,8 @@ public final class ReadTools {
                                 "z", Schemas.integer("Z coordinate")),
                         List.of("world", "x", "y", "z")),
                 (args, auth) -> {
-                    String world = requireWorld(facade, args, auth);
-                    int[] xyz = requireCoords(args, limits.maxCoordinate());
+                    final String world = requireWorld(facade, args, auth);
+                    final int[] xyz = requireCoords(args, limits.maxCoordinate());
                     return facade.blockAt(world, xyz[0], xyz[1], xyz[2]).toMap();
                 }));
 
@@ -119,20 +119,20 @@ public final class ReadTools {
                                 "z2", Schemas.integer("Max Z")),
                         List.of("world", "x1", "y1", "z1", "x2", "y2", "z2")),
                 (args, auth) -> {
-                    String world = requireWorld(facade, args, auth);
-                    int max = limits.maxCoordinate();
-                    int x1 = Args.integer(args, "x1", 0);
-                    int y1 = Args.integer(args, "y1", 0);
-                    int z1 = Args.integer(args, "z1", 0);
-                    int x2 = Args.integer(args, "x2", 0);
-                    int y2 = Args.integer(args, "y2", 0);
-                    int z2 = Args.integer(args, "z2", 0);
-                    for (int v : new int[] {x1, y1, z1, x2, y2, z2}) {
+                    final String world = requireWorld(facade, args, auth);
+                    final int max = limits.maxCoordinate();
+                    final int x1 = Args.integer(args, "x1", 0);
+                    final int y1 = Args.integer(args, "y1", 0);
+                    final int z1 = Args.integer(args, "z1", 0);
+                    final int x2 = Args.integer(args, "x2", 0);
+                    final int y2 = Args.integer(args, "y2", 0);
+                    final int z2 = Args.integer(args, "z2", 0);
+                    for (final int v : new int[] {x1, y1, z1, x2, y2, z2}) {
                         if (!Validators.isWithinCoordinate(v, max)) {
                             throw new ToolException("coordinate out of bounds (±" + max + ")");
                         }
                     }
-                    int[] region = {
+                    final int[] region = {
                         Math.min(x1, x2),
                         Math.min(y1, y2),
                         Math.min(z1, z2),
@@ -140,7 +140,7 @@ public final class ReadTools {
                         Math.max(y1, y2),
                         Math.max(z1, z2)
                     };
-                    List<BlockInfo> blocks = facade.region(
+                    final List<BlockInfo> blocks = facade.region(
                             world,
                             region[0],
                             region[1],
@@ -173,20 +173,20 @@ public final class ReadTools {
                                 "page", Schemas.integer("Page number (0-based)")),
                         List.of("world")),
                 (args, auth) -> {
-                    String world = requireWorld(facade, args, auth);
-                    String type = Args.string(args, "type");
+                    final String world = requireWorld(facade, args, auth);
+                    final String type = Args.string(args, "type");
                     if (type != null && !type.isBlank() && !Validators.isSafeEntityType(type)) {
                         throw new ToolException("invalid entity type");
                     }
-                    int limit = Args.integer(args, "limit", limits.maxEntityLimit());
+                    final int limit = Args.integer(args, "limit", limits.maxEntityLimit());
                     if (!Validators.isValidLimit(limit, limits.maxEntityLimit())) {
                         throw new ToolException("limit must be between 1 and " + limits.maxEntityLimit());
                     }
-                    int page = Args.integer(args, "page", 0);
+                    final int page = Args.integer(args, "page", 0);
                     if (!Validators.isValidPage(page, limit)) {
                         throw new ToolException("invalid page");
                     }
-                    List<EntityInfo> entities = facade.entities(world, type, limit, page);
+                    final List<EntityInfo> entities = facade.entities(world, type, limit, page);
                     return Map.of(
                             "serverId",
                             facade.serverId(),
@@ -207,9 +207,9 @@ public final class ReadTools {
                 (args, auth) -> facade.entityInfo(Args.uuid(args, "uuid")).toMap()));
     }
 
-    private static String requireWorld(ServerFacade facade, Map<String, Object> args, AuthContext auth)
+    private static String requireWorld(final ServerFacade facade, final Map<String, Object> args, final AuthContext auth)
             throws ToolException {
-        String world = Args.requiredString(args, "world");
+        final String world = Args.requiredString(args, "world");
         if (!Validators.isSafeWorldKey(world)) {
             throw new ToolException("invalid world key");
         }
@@ -222,10 +222,10 @@ public final class ReadTools {
         return world;
     }
 
-    private static int[] requireCoords(Map<String, Object> args, int maxCoord) throws ToolException {
-        int x = Args.integer(args, "x", 0);
-        int y = Args.integer(args, "y", 0);
-        int z = Args.integer(args, "z", 0);
+    private static int[] requireCoords(final Map<String, Object> args, final int maxCoord) throws ToolException {
+        final int x = Args.integer(args, "x", 0);
+        final int y = Args.integer(args, "y", 0);
+        final int z = Args.integer(args, "z", 0);
         if (!Validators.isWithinCoordinate(x, maxCoord)
                 || !Validators.isWithinCoordinate(y, maxCoord)
                 || !Validators.isWithinCoordinate(z, maxCoord)) {

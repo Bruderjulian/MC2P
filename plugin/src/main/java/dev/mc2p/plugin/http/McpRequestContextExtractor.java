@@ -7,7 +7,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Turns the identity attributes stamped by {@link AuthFilter} into the MCP transport
+ * Turns the identity attributes stamped by {@link AuthFilter} into the MCP
+ * transport
  * context that tool handlers read from {@code exchange.transportContext()}.
  */
 public final class McpRequestContextExtractor implements McpTransportContextExtractor<HttpServletRequest> {
@@ -18,12 +19,12 @@ public final class McpRequestContextExtractor implements McpTransportContextExtr
     public static final String KEY_CLIENT_NAME = "mc2p.clientName";
 
     @Override
-    public McpTransportContext extract(HttpServletRequest request) {
-        Map<String, Object> metadata = new LinkedHashMap<>();
-        Object restrictions = request.getAttribute(AuthFilter.ATTR_RESTRICTIONS);
-        Object tokenId = request.getAttribute(AuthFilter.ATTR_TOKEN_ID);
-        Object remoteIp = request.getAttribute(AuthFilter.ATTR_REMOTE_IP);
-        Object clientName = request.getAttribute(AuthFilter.ATTR_CLIENT_NAME);
+    public McpTransportContext extract(final HttpServletRequest request) {
+        final Map<String, Object> metadata = new LinkedHashMap<>();
+        final Object restrictions = request.getAttribute(AuthFilter.ATTR_RESTRICTIONS);
+        final Object tokenId = request.getAttribute(AuthFilter.ATTR_TOKEN_ID);
+        final Object remoteIp = request.getAttribute(AuthFilter.ATTR_REMOTE_IP);
+        final Object clientName = request.getAttribute(AuthFilter.ATTR_CLIENT_NAME);
         if (restrictions != null) {
             metadata.put(KEY_RESTRICTIONS, restrictions);
         }

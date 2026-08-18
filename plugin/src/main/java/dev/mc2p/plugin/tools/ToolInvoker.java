@@ -17,14 +17,14 @@ public final class ToolInvoker {
     private final AuditLogger audit;
     private final String serverId;
 
-    public ToolInvoker(ToolRegistry registry, AuditLogger audit, String serverId) {
+    public ToolInvoker(final ToolRegistry registry, final AuditLogger audit, final String serverId) {
         this.registry = registry;
         this.audit = audit;
         this.serverId = serverId;
     }
 
-    public CallToolResult invoke(String toolName, Map<String, Object> args, AuthContext auth) {
-        ToolSpec spec = registry.get(toolName);
+    public CallToolResult invoke(final String toolName, final Map<String, Object> args, final AuthContext auth) {
+        final ToolSpec spec = registry.get(toolName);
         if (spec == null) {
             return ToolResult.error("unknown tool: " + toolName);
         }
@@ -47,30 +47,30 @@ public final class ToolInvoker {
                         toolName,
                         "execute",
                         Json.toJson(redactSecrets(spec.name(), args == null ? Map.of() : args)));
-            } catch (RuntimeException e) {
+            } catch (final RuntimeException e) {
                 return ToolResult.error("audit write failed; action refused: " + e.getMessage());
             }
         }
         try {
-            Object result = spec.handler().invoke(args == null ? Map.of() : args, auth);
+            final Object result = spec.handler().invoke(args == null ? Map.of() : args, auth);
             return ToolResult.success(result == null ? Map.of() : result);
-        } catch (ToolException e) {
+        } catch (final ToolException e) {
             return ToolResult.error(e.getMessage());
-        } catch (RuntimeException e) {
+        } catch (final RuntimeException e) {
             return ToolResult.error("internal error: " + safeMessage(e));
         }
     }
 
-    private static String safeMessage(Throwable t) {
-        String m = t.getMessage();
+    private static String safeMessage(final Throwable t) {
+        final String m = t.getMessage();
         return m == null || m.isBlank() ? t.getClass().getSimpleName() : m;
     }
 
-    private static Map<String, Object> redactSecrets(String tool, Map<String, Object> args) {
-        Map<String, Object> copy = new java.util.LinkedHashMap<>(args);
+    private static Map<String, Object> redactSecrets(final String tool, final Map<String, Object> args) {
+        final Map<String, Object> copy = new java.util.LinkedHashMap<>(args);
         // Command arguments may carry tokens in plaintext; only record the first token.
-        if (copy.containsKey("command") && copy.get("command") instanceof String cmd) {
-            int end = cmd.indexOf(' ');
+        if (copy.containsKey("command") && copy.get("command") instanceof final String cmd) {
+            final int end = cmd.indexOf(' ');
             copy.put("command", end < 0 ? cmd : cmd.substring(0, end) + " …");
         }
         return copy;

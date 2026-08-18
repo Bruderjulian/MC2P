@@ -6,26 +6,29 @@ import com.velocitypowered.api.proxy.messages.ChannelIdentifier;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 
 /**
- * Velocity listener for backend→proxy {@code mc2p:rpc} messages. The source of a
- * plugin-message event from a backend is the {@link RegisteredServer}; we consume our
- * channel and hand the payload to {@link BackendClient} for correlation/assembly.
+ * Velocity listener for backend→proxy {@code mc2p:rpc} messages. The source of
+ * a
+ * plugin-message event from a backend is the {@link RegisteredServer}; we
+ * consume our
+ * channel and hand the payload to {@link BackendClient} for
+ * correlation/assembly.
  */
 public final class RpcListener {
 
     private final BackendClient client;
     private final ChannelIdentifier channel;
 
-    public RpcListener(BackendClient client, ChannelIdentifier channel) {
+    public RpcListener(final BackendClient client, final ChannelIdentifier channel) {
         this.client = client;
         this.channel = channel;
     }
 
     @Subscribe
-    public void onPluginMessage(PluginMessageEvent event) {
+    public void onPluginMessage(final PluginMessageEvent event) {
         if (!event.getIdentifier().equals(channel)) {
             return;
         }
-        if (!(event.getSource() instanceof RegisteredServer server)) {
+        if (!(event.getSource() instanceof final RegisteredServer server)) {
             return;
         }
         event.setResult(PluginMessageEvent.ForwardResult.handled());

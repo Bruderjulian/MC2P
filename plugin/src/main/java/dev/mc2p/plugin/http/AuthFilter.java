@@ -20,13 +20,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Transport enforcement point for the MCP endpoint: IP allowlist, rate limiting, body-size
- * cap, and Bearer-token authentication (token → restrictions). Runs off the main thread.
+ * Transport enforcement point for the MCP endpoint: IP allowlist, rate
+ * limiting, body-size
+ * cap, and Bearer-token authentication (token → restrictions). Runs off the
+ * main thread.
  *
  * <p>
- * On success it stamps the request with the resolved identity attributes, which the
- * {@link McpRequestContextExtractor} turns into the MCP transport context that tool
- * handlers read. This is only the first layer — {@code ToolInvoker} re-checks the
+ * On success it stamps the request with the resolved identity attributes, which
+ * the
+ * {@link McpRequestContextExtractor} turns into the MCP transport context that
+ * tool
+ * handlers read. This is only the first layer — {@code ToolInvoker} re-checks
+ * the
  * restrictions for every call regardless of transport.
  */
 public final class AuthFilter implements Filter {
@@ -46,12 +51,12 @@ public final class AuthFilter implements Filter {
     private final ClientActivityTracker activity;
 
     public AuthFilter(
-            TokenManager tokens,
-            RestrictionsConfig serverRestrictions,
-            List<String> ipAllowlist,
-            TokenBucketRateLimiter rateLimiter,
-            int bodyLimitBytes,
-            ClientActivityTracker activity) {
+            final TokenManager tokens,
+            final RestrictionsConfig serverRestrictions,
+            final List<String> ipAllowlist,
+            final TokenBucketRateLimiter rateLimiter,
+            final int bodyLimitBytes,
+            final ClientActivityTracker activity) {
         this.tokens = tokens;
         this.serverRestrictions = serverRestrictions;
         this.ipAllowlist = Cidr.parseAll(ipAllowlist);
@@ -61,16 +66,17 @@ public final class AuthFilter implements Filter {
     }
 
     @Override
-    public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain chain)
+    public void doFilter(final ServletRequest servletRequest, final ServletResponse servletResponse,
+            final FilterChain chain)
             throws IOException, ServletException {
         HttpServletRequest request = (HttpServletRequest) servletRequest;
-        HttpServletResponse response = (HttpServletResponse) servletResponse;
+        final HttpServletResponse response = (HttpServletResponse) servletResponse;
 
-        String remoteIp = request.getRemoteAddr();
+        final String remoteIp = request.getRemoteAddr();
         InetAddress address;
         try {
             address = InetAddress.getByName(remoteIp);
-        } catch (IOException e) {
+        } catch (final IOException e) {
             address = null;
         }
         if (!ipAllowlist.isEmpty() && (address == null || !Cidr.anyMatch(ipAllowlist, address))) {
@@ -84,7 +90,7 @@ public final class AuthFilter implements Filter {
             return;
         }
 
-        long contentLength = request.getContentLengthLong();
+        final long contentLength = request.getContentLengthLong();
         if (contentLength > bodyLimitBytes) {
             reject(response, 413, "{\"error\":\"payload too large\"}");
             return;
@@ -93,19 +99,19 @@ public final class AuthFilter implements Filter {
             request = new LimitedHttpServletRequest(request, bodyLimitBytes);
         }
 
-        String auth = request.getHeader("Authorization");
+        final String auth = request.getHeader("Authorization");
         if (auth == null || !auth.regionMatches(true, 0, "Bearer ", 0, 7)) {
             reject(response, 401, "{\"error\":\"unauthorized\"}");
             return;
         }
-        String presented = auth.substring(7).trim();
-        TokenManager.AuthResult result = tokens.authenticate(presented);
+        final String presented = auth.substring(7).trim();
+        final TokenManager.AuthResult result = tokens.authenticate(presented);
         if (result == null) {
             reject(response, 401, "{\"error\":\"unauthorized\"}");
             return;
         }
 
-        RestrictionsConfig effective = serverRestrictions.merge(result.restrictions());
+        final RestrictionsConfig effective = serverRestrictions.merge(result.restrictions());
         request.setAttribute(ATTR_RESTRICTIONS, effective);
         request.setAttribute(ATTR_TOKEN_ID, result.tokenId());
         request.setAttribute(ATTR_REMOTE_IP, remoteIp);
@@ -115,7 +121,8 @@ public final class AuthFilter implements Filter {
         chain.doFilter(request, response);
     }
 
-    private static void reject(HttpServletResponse response, int status, String body) throws IOException {
+    private static void reject(final HttpServletResponse response, final int status, final String body)
+            throws IOException {
         response.setStatus(status);
         response.setContentType("application/json");
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());

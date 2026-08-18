@@ -16,10 +16,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Backend-mode listener for the {@code mc2p:rpc} plugin-messaging channel. Authenticates
- * the proxy with the shared {@code proxySecret}, then serves tool requests carrying the
- * client restrictions (re-checked by the tool layer and intersected with this backend's
- * own {@code server-restrictions}). Backends behind a proxy open zero HTTP ports.
+ * Backend-mode listener for the {@code mc2p:rpc} plugin-messaging channel.
+ * Authenticates
+ * the proxy with the shared {@code proxySecret}, then serves tool requests
+ * carrying the
+ * client restrictions (re-checked by the tool layer and intersected with this
+ * backend's
+ * own {@code server-restrictions}). Backends behind a proxy open zero HTTP
+ * ports.
  */
 public final class BackendRpcServer implements PluginMessageListener {
 
@@ -37,7 +41,7 @@ public final class BackendRpcServer implements PluginMessageListener {
         final Player player;
         final long expires;
 
-        TrustedSender(Player player, long expires) {
+        TrustedSender(final Player player, final long expires) {
             this.player = player;
             this.expires = expires;
         }
@@ -46,13 +50,13 @@ public final class BackendRpcServer implements PluginMessageListener {
     private final ConcurrentHashMap<String, TrustedSender> trustedSenders = new ConcurrentHashMap<>();
 
     public BackendRpcServer(
-            Plugin plugin,
-            ToolInvoker invoker,
-            RestrictionsConfig serverRestrictions,
-            String serverId,
-            String channel,
-            String proxySecret,
-            long timeoutMillis) {
+            final Plugin plugin,
+            final ToolInvoker invoker,
+            final RestrictionsConfig serverRestrictions,
+            final String serverId,
+            final String channel,
+            final String proxySecret,
+            final long timeoutMillis) {
         this.plugin = plugin;
         this.invoker = invoker;
         this.serverRestrictions = serverRestrictions;
@@ -63,18 +67,18 @@ public final class BackendRpcServer implements PluginMessageListener {
     }
 
     @Override
-    public void onPluginMessageReceived(String channel, Player player, byte[] message) {
+    public void onPluginMessageReceived(final String channel, final Player player, final byte[] message) {
         if (!this.channel.equals(channel)) {
             return;
         }
         Map<String, Object> decoded;
         try {
             decoded = Json.parse(message);
-        } catch (RuntimeException e) {
+        } catch (final RuntimeException e) {
             log.warn("mc2p:rpc: malformed message from {}", senderName(player));
             return;
         }
-        String type = RpcMessage.type(decoded);
+        final String type = RpcMessage.type(decoded);
         if ("hello".equals(type)) {
             handleHello(player, decoded);
         } else if ("req".equals(type)) {
@@ -84,8 +88,8 @@ public final class BackendRpcServer implements PluginMessageListener {
         }
     }
 
-    private void handleHello(Player player, Map<String, Object> message) {
-        String presented = String.valueOf(message.get("secret"));
+    private void handleHello(final Player player, final Map<String, Object> message) {
+        final String presented = String.valueOf(message.get("secret"));
         if (proxySecret == null || proxySecret.isBlank()) {
             send(player, RpcMessage.helloNo("proxy secret not configured on backend"));
             return;
@@ -101,104 +105,107 @@ public final class BackendRpcServer implements PluginMessageListener {
         log.info("mc2p:rpc: proxy {} authenticated", senderName(player));
     }
 
-    private void handlePing(Player player) {
+    private void handlePing(final Player player) {
         send(player, Map.of("t", "pong", "serverId", serverId));
     }
 
-    private void handleRequest(Player player, Map<String, Object> message) {
+    private void handleRequest(final Player player, final Map<String, Object> message) {
         if (!isTrusted(player)) {
             log.warn("mc2p:rpc: dropping request from unauthenticated sender {}", senderName(player));
             return;
         }
-        String id = RpcMessage.id(message);
-        String method = String.valueOf(message.get("method"));
-        String client = String.valueOf(message.getOrDefault("client", ""));
+        final String id = RpcMessage.id(message);
+        final String method = String.valueOf(message.get("method"));
+        final String client = String.valueOf(message.getOrDefault("client", ""));
         @SuppressWarnings("unchecked")
-        Map<String, Object> params = (Map<String, Object>) message.getOrDefault("params", Map.of());
+        final Map<String, Object> params = (Map<String, Object>) message.getOrDefault("params", Map.of());
         @SuppressWarnings("unchecked")
-        Map<String, Object> envelopeRestrictions = (Map<String, Object>) message.getOrDefault("restrictions", Map.of());
+        final Map<String, Object> envelopeRestrictions = (Map<String, Object>) message.getOrDefault("restrictions",
+                Map.of());
 
         if (id == null || method.isBlank()) {
             return;
         }
-        RestrictionsConfig parsed = RestrictionsConfig.load(envelopeRestrictions);
-        String tokenId = String.valueOf(message.getOrDefault("tokenId", ""));
-        RestrictionsConfig effective = serverRestrictions.merge(parsed);
-        AuthContext auth = new AuthContext(effective, client, tokenId, senderAddress(player), "rpc");
+        final RestrictionsConfig parsed = RestrictionsConfig.load(envelopeRestrictions);
+        final String tokenId = String.valueOf(message.getOrDefault("tokenId", ""));
+        final RestrictionsConfig effective = serverRestrictions.merge(parsed);
+        final AuthContext auth = new AuthContext(effective, client, tokenId, senderAddress(player), "rpc");
         try {
-            var result = invoker.invoke(method, params, auth);
-            Map<String, Object> encoded = RpcResultCodec.encode(result);
-            boolean ok = Boolean.TRUE.equals(encoded.get("ok"));
-            Map<String, Object> response = ok
+            final var result = invoker.invoke(method, params, auth);
+            final Map<String, Object> encoded = RpcResultCodec.encode(result);
+            final boolean ok = Boolean.TRUE.equals(encoded.get("ok"));
+            final Map<String, Object> response = ok
                     ? RpcMessage.response(id, true, encoded.get("result"), null)
                     : RpcMessage.response(id, false, null, String.valueOf(encoded.get("error")));
             sendResponse(player, id, response);
-        } catch (RuntimeException e) {
+        } catch (final RuntimeException e) {
             sendResponse(player, id, RpcMessage.response(id, false, null, "backend error"));
         }
     }
 
-    private void sendResponse(Player player, String id, Map<String, Object> response) {
-        byte[] jsonBytes = Json.toJsonBytes(response);
-        for (Map<String, Object> message : RpcMessage.encodeResponse(id, jsonBytes)) {
+    private void sendResponse(final Player player, final String id, final Map<String, Object> response) {
+        final byte[] jsonBytes = Json.toJsonBytes(response);
+        for (final Map<String, Object> message : RpcMessage.encodeResponse(id, jsonBytes)) {
             send(player, message);
         }
     }
 
-    private void send(Player player, Map<String, Object> message) {
+    private void send(final Player player, final Map<String, Object> message) {
         try {
             player.sendPluginMessage(plugin, channel, Json.toJsonBytes(message));
-        } catch (RuntimeException e) {
+        } catch (final RuntimeException e) {
             log.warn("mc2p:rpc: failed to send to {}: {}", senderName(player), e.getMessage());
         }
     }
 
-    private boolean isTrusted(Player player) {
-        TrustedSender sender = trustedSenders.get(senderKey(player));
+    private boolean isTrusted(final Player player) {
+        final TrustedSender sender = trustedSenders.get(senderKey(player));
         return sender != null && System.nanoTime() < sender.expires;
     }
 
     /**
-     * Pushes a {@code event} message to every currently authenticated proxy. Used by the
-     * plugin to signal player join/leave so the proxy can forward a resource-list-changed
+     * Pushes a {@code event} message to every currently authenticated proxy. Used
+     * by the
+     * plugin to signal player join/leave so the proxy can forward a
+     * resource-list-changed
      * SSE notification to connected MCP clients.
      */
-    public void notifyEvent(String event, Map<String, Object> params) {
+    public void notifyEvent(final String event, final Map<String, Object> params) {
         if (trustedSenders.isEmpty()) {
             return;
         }
-        byte[] payload = Json.toJsonBytes(RpcMessage.event(event, params));
-        for (TrustedSender sender : trustedSenders.values()) {
+        final byte[] payload = Json.toJsonBytes(RpcMessage.event(event, params));
+        for (final TrustedSender sender : trustedSenders.values()) {
             if (System.nanoTime() >= sender.expires) {
                 trustedSenders.remove(senderKey(sender.player));
                 continue;
             }
             try {
                 sender.player.sendPluginMessage(plugin, channel, payload);
-            } catch (RuntimeException e) {
+            } catch (final RuntimeException e) {
                 log.warn("mc2p:rpc: failed to push event to {}: {}", senderName(sender.player), e.getMessage());
             }
         }
     }
 
-    private String senderKey(Player player) {
+    private String senderKey(final Player player) {
         return player.getUniqueId().toString();
     }
 
-    private String senderName(Player player) {
+    private String senderName(final Player player) {
         return player.getName() == null ? player.getUniqueId().toString() : player.getName();
     }
 
-    private String senderAddress(Player player) {
+    private String senderAddress(final Player player) {
         try {
-            java.net.InetSocketAddress a = player.getAddress();
+            final java.net.InetSocketAddress a = player.getAddress();
             return a == null
                     ? ""
                     : String.valueOf(
                             a.getAddress() == null
                                     ? a.getHostString()
                                     : a.getAddress().getHostAddress());
-        } catch (Exception e) {
+        } catch (final Exception e) {
             return "";
         }
     }

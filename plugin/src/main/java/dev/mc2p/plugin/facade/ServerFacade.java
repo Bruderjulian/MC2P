@@ -15,8 +15,10 @@ import java.util.UUID;
 import org.bukkit.Location;
 
 /**
- * Abstraction over the host server, implemented for Paper. All Bukkit API access happens
- * inside the implementation, which schedules onto the main thread. Tool handlers and the
+ * Abstraction over the host server, implemented for Paper. All Bukkit API
+ * access happens
+ * inside the implementation, which schedules onto the main thread. Tool
+ * handlers and the
  * HTTP/RPC layers only ever see this interface.
  */
 public interface ServerFacade {

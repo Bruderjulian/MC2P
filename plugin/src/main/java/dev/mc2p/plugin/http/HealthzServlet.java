@@ -17,7 +17,8 @@ public final class HealthzServlet extends HttpServlet {
     private final String restartStrategy;
     private final long startedAt = System.currentTimeMillis();
 
-    public HealthzServlet(String serverId, String version, String mode, String restartStrategy) {
+    public HealthzServlet(final String serverId, final String version, final String mode,
+            final String restartStrategy) {
         this.serverId = serverId;
         this.version = version;
         this.mode = mode;
@@ -25,7 +26,7 @@ public final class HealthzServlet extends HttpServlet {
     }
 
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    protected void doGet(final HttpServletRequest req, final HttpServletResponse resp) throws IOException {
         resp.setStatus(200);
         resp.setContentType("application/json");
         resp.setCharacterEncoding(StandardCharsets.UTF_8.name());
