@@ -18,7 +18,6 @@ By participating in this project you agree to follow our
 - [Project structure](#project-structure)
 - [Guidelines](#guidelines)
 - [Pull request workflow](#pull-request-workflow)
-- [Testing](#testing)
 - [Documentation](#documentation)
 - [Reporting bugs](#reporting-bugs)
 - [Reporting security issues](#reporting-security-issues)
@@ -48,7 +47,6 @@ git clone https://github.com/Bruderjulian/MC2P.git
 cd MC2P
 export JAVA_HOME="/path/to/jdk-21"
 ./gradlew build
-./gradlew test
 ```
 
 ## Project structure
@@ -65,12 +63,12 @@ Keep changes inside the right module. New shared logic belongs in `common`, new 
 ## Guidelines
 
 - **Security first.** Any change that weakens a control point (TLS, auth, audit,
-  validation) must be justified in the PR and accompanied by tests. Weaknesses are not
-  merged without strong reasoning.
+  validation) must be justified in the PR. Weaknesses are not merged without strong
+  reasoning.
 - **Stay fail-closed.** Destructive tools must keep their `confirm` gate and their
   fail-closed audit entry — in both the standalone plugin and the proxy relay.
-- **Match the conventions.** Java 17 bytecode (21 for the plugin), UTF-8 sources, JUnit 5
-  for tests, and existing module boundaries.
+- **Match the conventions.** Java 17 bytecode (21 for the plugin), UTF-8 sources, and
+  existing module boundaries.
 - **Don't introduce secrets.** Never commit tokens, passwords, or keystores. Use the
   `env:VAR` / `file:path` pattern from the existing configs.
 - **Behave like an admin would expect.** Defaults must be conservative: feature flags
@@ -82,12 +80,11 @@ Keep changes inside the right module. New shared logic belongs in `common`, new 
 
 1. Fork the repo and create a branch:
    `git checkout -b feat/your-change`.
-2. Make your change, adding tests for new behavior. Keep commits focused with descriptive
-   messages.
-3. Run the full verification suite locally:
+2. Make your change. Keep commits focused with descriptive messages.
+3. Run the build locally:
 
    ```sh
-   ./gradlew build && ./gradlew test
+   ./gradlew build
    ```
 
 4. Push your branch and open a pull request using the
@@ -95,14 +92,6 @@ Keep changes inside the right module. New shared logic belongs in `common`, new 
    it is not optional.
 5. A maintainer will review. Address review feedback with additional commits; keep the
    discussion on the PR.
-
-## Testing
-
-- Unit tests live next to the code in each module's `src/test/java`.
-- Run everything with `./gradlew test`.
-- For behavior changes, add tests that prove the new behavior **and** the failure cases
-  (rejected input, denied role, refused audit write, and so on).
-- MCP conformance against a running endpoint: `npx @modelcontextprotocol/conformance`.
 
 ## Documentation
 

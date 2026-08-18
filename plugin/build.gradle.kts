@@ -34,7 +34,7 @@ dependencies {
     compileOnly("org.slf4j:slf4j-api:2.0.18")
 
     testImplementation("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
-    testImplementation("uk.org.webcompere:system-stubs-jupiter:2.1.6")
+    testImplementation("uk.org.webcompere:system-stubs-jupiter:2.1.8")
 }
 
 tasks.withType<ShadowJar>().configureEach {

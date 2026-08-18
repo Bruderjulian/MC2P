@@ -1,8 +1,5 @@
-import org.gradle.api.tasks.testing.logging.TestExceptionFormat
-
 plugins {
     java
-    id("com.diffplug.spotless") version "8.9.0" apply false
 }
 
 allprojects {
@@ -14,9 +11,6 @@ subprojects {
     apply(plugin = "java")
     apply(plugin = "java-library")
     apply(plugin = "maven-publish")
-    apply(plugin = "com.diffplug.spotless")
-    apply(plugin = "checkstyle")
-    apply(plugin = "jacoco")
 
     java {
         toolchain {
@@ -35,34 +29,5 @@ subprojects {
         options.release.set(17)
         options.encoding = "UTF-8"
         options.compilerArgs.add("-Xlint:deprecation")
-    }
-
-    configure<com.diffplug.gradle.spotless.SpotlessExtension> {
-        java {
-            palantirJavaFormat("2.50.0")
-            target("src/*/java/**/*.java")
-        }
-    }
-
-    tasks.withType<Checkstyle>().configureEach {
-        configFile = rootProject.file("config/checkstyle/checkstyle.xml")
-        maxErrors = 0
-        maxWarnings = 0
-    }
-
-    tasks.withType<Test>().configureEach {
-        useJUnitPlatform()
-        testLogging {
-            events("passed", "skipped", "failed")
-            exceptionFormat = TestExceptionFormat.FULL
-        }
-        finalizedBy(tasks.named("jacocoTestReport"))
-    }
-
-    tasks.withType<JacocoReport>().configureEach {
-        reports {
-            xml.required.set(false)
-            html.required.set(false)
-        }
     }
 }

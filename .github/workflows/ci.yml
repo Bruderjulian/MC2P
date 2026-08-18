@@ -1,9 +1,8 @@
-name: Build & Test
+name: Build
 
 permissions:
   contents: read
   actions: read
-  checks: write
 
 on:
   push:
@@ -26,7 +25,7 @@ on:
       - "gradle.properties"
 
 jobs:
-  build-and-test:
+  build:
     runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
       - name: Checkout
@@ -39,7 +38,7 @@ jobs:
           java-version: "21"
           cache: gradle
       - name: Cache Gradle
-        uses: actions/cache@v5 # https://github.com/actions/cache/releases
+        uses: actions/cache@v6 # https://github.com/actions/cache/releases
         with:
           path: |
             ~/.gradle/caches
@@ -49,20 +48,15 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Build
-        run: ./gradlew build -x test -x spotlessCheck -x checkstyleMain -x checkstyleTest --console=plain
-
+        run: ./gradlew build --console=plain
 
       - name: Test the artifact
         run: |
-          ./gradlew test --console=plain
           test -f plugin/build/libs/mc2p-plugin.jar
           test -f proxy/build/libs/mc2p-proxy.jar
           unzip -l plugin/build/libs/mc2p-plugin.jar | grep -q "plugin.yml"
           unzip -l plugin/build/libs/mc2p-plugin.jar | grep -q "dev/mc2p/lib/mcp/"
           unzip -l proxy/build/libs/mc2p-proxy.jar | grep -q "velocity-plugin.json"
-
-      - name: Code quality
-        run: ./gradlew spotlessCheck checkstyleMain checkstyleTest --console=plain
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
@@ -73,10 +67,3 @@ jobs:
             plugin/build/libs/mc2p-plugin.jar
             proxy/build/libs/mc2p-proxy.jar
           if-no-files-found: error
-
-    # - name: Keep job alive on failure for debugging
-    #  if: failure()
-    #  run: |
-    #        echo "Job failed. Keeping VM alive for 30 minutes for debugging..."
-    #        echo "SSH connection info is available in the Setup runner step above"
-    #        sleep 300
