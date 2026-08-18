@@ -65,7 +65,7 @@ jobs:
         run: ./gradlew spotlessCheck checkstyleMain checkstyleTest --console=plain
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mc2p-dist
           overwrite: true
