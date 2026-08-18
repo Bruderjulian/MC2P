@@ -14,8 +14,8 @@ tasks.withType<JavaCompile>().configureEach {
 dependencies {
     implementation(project(":common"))
 
-    compileOnly("com.velocitypowered:velocity-api:3.4.0")
-    annotationProcessor("com.velocitypowered:velocity-api:4.1.0-SNAPSHOT")
+    compileOnly("com.velocitypowered:velocity-api:4.0.0")
+    annotationProcessor("com.velocitypowered:velocity-api:4.0.0")
     implementation("dev.jorel:commandapi-velocity-shade:12.0.0")
 
     implementation("io.modelcontextprotocol.sdk:mcp:2.0.0")
@@ -25,7 +25,7 @@ dependencies {
     implementation("org.yaml:snakeyaml:2.6")
     compileOnly("org.slf4j:slf4j-api:2.0.18")
 
-    testImplementation("com.velocitypowered:velocity-api:3.4.0")
+    testImplementation("com.velocitypowered:velocity-api:4.0.0")
     testImplementation("uk.org.webcompere:system-stubs-jupiter:2.1.8")
 }
 
