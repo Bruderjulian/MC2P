@@ -22,7 +22,7 @@ repositories {
 dependencies {
     implementation(project(":common"))
 
-    compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:26.2.build.112-stable")
 
     implementation("dev.jorel:commandapi-paper-shade:12.0.0")
 
@@ -33,7 +33,7 @@ dependencies {
     implementation("org.yaml:snakeyaml:2.3")
     compileOnly("org.slf4j:slf4j-api:2.0.13")
 
-    testImplementation("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+    testImplementation("io.papermc.paper:paper-api:26.2.build.112-stable")
     testImplementation("uk.org.webcompere:system-stubs-jupiter:2.1.6")
 }
 
