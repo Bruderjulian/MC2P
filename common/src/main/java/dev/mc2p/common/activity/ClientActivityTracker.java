@@ -50,12 +50,7 @@ public final class ClientActivityTracker {
         long now = System.currentTimeMillis();
         long cutoff = window.toMillis() > 0 ? now - window.toMillis() : Long.MIN_VALUE;
         entries.entrySet().removeIf(e -> e.getValue().lastSeenMillis() < cutoff);
-        List<Entry> result = new ArrayList<>();
-        for (Entry e : entries.values()) {
-            if (e.lastSeenMillis() >= cutoff) {
-                result.add(e);
-            }
-        }
+        List<Entry> result = new ArrayList<>(entries.values());
         result.sort((a, b) -> Long.compare(b.lastSeenMillis(), a.lastSeenMillis()));
         return result;
     }

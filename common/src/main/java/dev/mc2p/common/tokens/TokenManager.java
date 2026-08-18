@@ -276,7 +276,7 @@ public final class TokenManager {
                     role = Role.fromString(name);
                     hex = parts[0];
                 }
-                if (role == null || hex.isEmpty()) {
+                if (role == null || hex == null || hex.isEmpty()) {
                     continue;
                 }
                 byte[] hash = java.util.HexFormat.of().parseHex(hex);

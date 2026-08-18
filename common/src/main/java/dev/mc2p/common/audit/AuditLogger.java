@@ -81,7 +81,10 @@ public final class AuditLogger {
     private void writeLine(String line) {
         synchronized (lock) {
             try {
-                Files.createDirectories(file.getParent());
+                Path parent = file.getParent();
+                if (parent != null) {
+                    Files.createDirectories(parent);
+                }
                 Files.writeString(
                         file, line, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
                 approximateSize += line.getBytes(StandardCharsets.UTF_8).length;
@@ -103,9 +106,8 @@ public final class AuditLogger {
                     Files.move(from, to, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
                 }
             }
-            if (Files.exists(file)) {
-                Files.move(file, Path.of(file + ".1"), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            }
+            // rotate() is only reached right after a successful write, so the log file exists.
+            Files.move(file, Path.of(file + ".1"), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             approximateSize = 0;
         } catch (Exception e) {
             throw new AuditWriteException("Failed to rotate audit log " + file, e);
