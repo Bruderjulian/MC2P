@@ -65,7 +65,8 @@ class RpcResultCodecTest {
 
     @Test
     void errorWithEmptyContentFallsBackToDefaultMessage() {
-        CallToolResult result = CallToolResult.builder().content(List.of()).isError(true).build();
+        CallToolResult result =
+                CallToolResult.builder().content(List.of()).isError(true).build();
         Map<String, Object> encoded = RpcResultCodec.encode(result);
         assertEquals("tool error", encoded.get("error"));
     }

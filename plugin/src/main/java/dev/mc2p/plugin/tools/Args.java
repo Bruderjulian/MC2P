@@ -24,10 +24,11 @@ public final class Args {
 
     public static boolean bool(Map<String, Object> args, String key) {
         Object value = args.get(key);
-        if (value instanceof Boolean b) {
+        if (value == null) {
+            return false;
+        } else if (value instanceof Boolean b) {
             return b;
-        }
-        if (value instanceof String s) {
+        } else if (value instanceof String s) {
             return Boolean.parseBoolean(s);
         }
         return false;

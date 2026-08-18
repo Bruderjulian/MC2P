@@ -1,6 +1,5 @@
 package dev.mc2p.plugin.tools;
 
-import dev.mc2p.common.role.Role;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -29,12 +28,5 @@ public final class ToolRegistry {
 
     public int size() {
         return tools.size();
-    }
-
-    /** The tools visible to a role (required role satisfied). */
-    public List<ToolSpec> visibleTo(Role role) {
-        return tools.values().stream()
-                .filter(spec -> role != null && role.can(spec.requiredRole()))
-                .toList();
     }
 }

@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.mc2p.common.audit.AuditLogger.AuditWriteException;
-import dev.mc2p.common.role.Role;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -28,17 +27,16 @@ class AuditLoggerTest {
     void writesJsonLinesWithEscaping() throws IOException {
         Path file = tempDir.resolve("audit.log");
         AuditLogger logger = new AuditLogger(file, 8, 3);
-        logger.log(Role.OPS, "alice", "tid-1", "srv-1", "gamemode", "execute", "{\"from\":\"a\"}");
-        logger.log(null, null, null, "srv-1", "tp", "execute");
-        logger.log(Role.READER, "bob", "tid-2", "srv-1", "say", "execute");
+        logger.log("alice", "tid-1", "srv-1", "gamemode", "execute", "{\"from\":\"a\"}");
+        logger.log(null, null, "srv-1", "tp", "execute");
+        logger.log("bob", "tid-2", "srv-1", "say", "execute");
 
         String content = Files.readString(file, StandardCharsets.UTF_8);
-        assertTrue(content.contains("\"role\":\"ops\""));
         assertTrue(content.contains("\"client\":\"alice\""));
         assertTrue(content.contains("\"tokenId\":\"tid-1\""));
-        assertTrue(content.contains("\"role\":\"none\""));
         assertTrue(content.contains("\"client\":\"\""));
         assertTrue(content.contains("\"detail\":{\"from\":\"a\"}"));
+        assertFalse(content.contains("\"role\""));
         assertEquals(3, content.strip().lines().count());
     }
 
@@ -47,7 +45,7 @@ class AuditLoggerTest {
         Path file = tempDir.resolve("escape.log");
         AuditLogger logger = new AuditLogger(file, 8, 3);
         String nasty = "tab\tquote\"back\\slash\nnewline\rreturn\u0001bell";
-        logger.log(Role.ADMIN, nasty, "t", "s", "tool", "action");
+        logger.log(nasty, "t", "s", "tool", "action");
 
         String content;
         try {
@@ -67,8 +65,8 @@ class AuditLoggerTest {
     void nullDetailRendersAsEmptyObject() throws IOException {
         Path file = tempDir.resolve("nulldetail.log");
         AuditLogger logger = new AuditLogger(file, 8, 3);
-        logger.log(Role.ADMIN, "x", "t", "s", "tool", "action", null);
-        logger.log(Role.ADMIN, "x", "t", "s", "tool", "action", "");
+        logger.log("x", "t", "s", "tool", "action", null);
+        logger.log("x", "t", "s", "tool", "action", "");
         String content = Files.readString(file, StandardCharsets.UTF_8);
         assertTrue(content.contains("\"detail\":{}"));
     }
@@ -79,7 +77,7 @@ class AuditLoggerTest {
         Path file = Path.of(name);
         try {
             AuditLogger logger = new AuditLogger(file, 8, 3);
-            logger.log(Role.OPS, "alice", "t1", "s", "tool", "action");
+            logger.log("alice", "t1", "s", "tool", "action");
             assertTrue(Files.exists(file));
         } finally {
             Files.deleteIfExists(file);
@@ -102,7 +100,7 @@ class AuditLoggerTest {
         Files.writeString(file, "pre-existing line\n");
 
         AuditLogger logger = new AuditLogger(file, 8, 3);
-        logger.log(Role.READER, "carol", "t3", "s", "tool", "action");
+        logger.log("carol", "t3", "s", "tool", "action");
         String content = Files.readString(file, StandardCharsets.UTF_8);
         assertTrue(content.startsWith("pre-existing line\n"));
         assertTrue(content.contains("carol"));
@@ -114,7 +112,7 @@ class AuditLoggerTest {
         AuditLogger logger = new AuditLogger(file, 1, 3);
 
         for (int i = 0; i < 4; i++) {
-            logger.log(Role.OPS, "bulk-" + i, "t" + i, "s", "tool", "action", bigLine(1_100_000));
+            logger.log("bulk-" + i, "t" + i, "s", "tool", "action", bigLine(1_100_000));
         }
 
         assertTrue(Files.exists(Path.of(file + ".1")), "rotated file .1 should exist");
@@ -132,7 +130,7 @@ class AuditLoggerTest {
             throw new RuntimeException(e);
         }
         AuditLogger logger = new AuditLogger(dir, 8, 3);
-        assertThrows(AuditWriteException.class, () -> logger.log(Role.ADMIN, "x", "t", "s", "tool", "action"));
+        assertThrows(AuditWriteException.class, () -> logger.log("x", "t", "s", "tool", "action"));
     }
 
     @Test
@@ -147,8 +145,8 @@ class AuditLoggerTest {
     void maxFilesAtLeastOne() throws IOException {
         Path file = tempDir.resolve("single.log");
         AuditLogger logger = new AuditLogger(file, 1, 0);
-        logger.log(Role.OPS, "alice", "t1", "s", "tool", "action", bigLine(1_100_000));
-        logger.log(Role.OPS, "alice", "t1", "s", "tool", "action", bigLine(1_100_000));
+        logger.log("alice", "t1", "s", "tool", "action", bigLine(1_100_000));
+        logger.log("alice", "t1", "s", "tool", "action", bigLine(1_100_000));
         assertTrue(Files.exists(Path.of(file + ".1")));
     }
 
@@ -160,8 +158,7 @@ class AuditLoggerTest {
         Files.writeString(blocker.resolve("keep.txt"), "x");
         AuditLogger logger = new AuditLogger(file, 1, 1);
         assertThrows(
-                AuditWriteException.class,
-                () -> logger.log(Role.OPS, "alice", "t1", "s", "tool", "action", bigLine(1_100_000)));
+                AuditWriteException.class, () -> logger.log("alice", "t1", "s", "tool", "action", bigLine(1_100_000)));
     }
 
     @Test

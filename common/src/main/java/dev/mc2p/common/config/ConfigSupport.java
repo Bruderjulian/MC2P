@@ -26,15 +26,25 @@ public final class ConfigSupport {
             return new LinkedHashMap<>();
         }
         try (InputStream in = Files.newInputStream(file)) {
-            Object parsed = new Yaml().load(in);
-            if (parsed == null) {
-                return new LinkedHashMap<>();
-            }
-            if (!(parsed instanceof Map)) {
-                throw new IOException("config root must be a mapping");
-            }
-            return (Map<String, Object>) parsed;
+            return loadYaml(in);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static Map<String, Object> loadYaml(InputStream in) throws IOException {
+        Object parsed = new Yaml().load(in);
+        if (parsed == null) {
+            return new LinkedHashMap<>();
+        }
+        if (!(parsed instanceof Map)) {
+            throw new IOException("config root must be a mapping");
+        }
+        return (Map<String, Object>) parsed;
+    }
+
+    /** Serializes a config map back to YAML text. */
+    public static String dumpYaml(Map<String, Object> config) {
+        return new Yaml().dump(config);
     }
 
     /**

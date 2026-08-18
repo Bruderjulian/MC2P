@@ -26,6 +26,7 @@ import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Statistic;
@@ -42,7 +43,10 @@ import org.bukkit.potion.PotionEffectType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Bukkit/Paper implementation of {@link ServerFacade}. Every entry point runs on the main thread. */
+/**
+ * Bukkit/Paper implementation of {@link ServerFacade}. Every entry point runs
+ * on the main thread.
+ */
 public final class PaperServerFacade implements ServerFacade {
 
     private static final Logger log = LoggerFactory.getLogger(PaperServerFacade.class);
@@ -53,7 +57,8 @@ public final class PaperServerFacade implements ServerFacade {
     private final String restartStrategy;
     private final long startedAt = System.currentTimeMillis();
 
-    public PaperServerFacade(Plugin plugin, MainThread mainThread, String serverId, String restartStrategy) {
+    public PaperServerFacade(
+            final Plugin plugin, final MainThread mainThread, final String serverId, final String restartStrategy) {
         this.plugin = plugin;
         this.mainThread = mainThread;
         this.serverId = serverId;
@@ -88,20 +93,20 @@ public final class PaperServerFacade implements ServerFacade {
     @Override
     public Status status() {
         return mainThread.call(() -> {
-            double[] tpsArray = safeTps();
-            Tps tps = new Tps(
+            final double[] tpsArray = safeTps();
+            final Tps tps = new Tps(
                     tpsArray.length > 0 ? tpsArray[0] : 20.0,
                     tpsArray.length > 1 ? tpsArray[1] : 20.0,
                     tpsArray.length > 2 ? tpsArray[2] : 20.0);
-            List<String> worlds = new ArrayList<>();
-            for (World w : Bukkit.getWorlds()) {
+            final List<String> worlds = new ArrayList<>();
+            for (final World w : Bukkit.getWorlds()) {
                 worlds.add(w.getName());
             }
-            List<String> plugins = new ArrayList<>();
-            for (Plugin p : Bukkit.getPluginManager().getPlugins()) {
+            final List<String> plugins = new ArrayList<>();
+            for (final Plugin p : Bukkit.getPluginManager().getPlugins()) {
                 plugins.add(p.getName());
             }
-            Runtime rt = Runtime.getRuntime();
+            final Runtime rt = Runtime.getRuntime();
             return new Status(
                     serverId,
                     Bukkit.getMinecraftVersion(),
@@ -126,8 +131,8 @@ public final class PaperServerFacade implements ServerFacade {
     @Override
     public List<WorldInfo> worlds() {
         return mainThread.call(() -> {
-            List<WorldInfo> result = new ArrayList<>();
-            for (World w : Bukkit.getWorlds()) {
+            final List<WorldInfo> result = new ArrayList<>();
+            for (final World w : Bukkit.getWorlds()) {
                 result.add(new WorldInfo(
                         w.getName(),
                         dimensionName(w.getEnvironment()),
@@ -145,8 +150,8 @@ public final class PaperServerFacade implements ServerFacade {
     @Override
     public List<PluginInfo> plugins() {
         return mainThread.call(() -> {
-            List<PluginInfo> result = new ArrayList<>();
-            for (Plugin p : Bukkit.getPluginManager().getPlugins()) {
+            final List<PluginInfo> result = new ArrayList<>();
+            for (final Plugin p : Bukkit.getPluginManager().getPlugins()) {
                 result.add(new PluginInfo(p.getName(), p.getPluginMeta().getVersion(), p.isEnabled()));
             }
             return result;
@@ -156,8 +161,8 @@ public final class PaperServerFacade implements ServerFacade {
     @Override
     public List<PlayerInfo> players() {
         return mainThread.call(() -> {
-            List<PlayerInfo> result = new ArrayList<>();
-            for (Player p : Bukkit.getOnlinePlayers()) {
+            final List<PlayerInfo> result = new ArrayList<>();
+            for (final Player p : Bukkit.getOnlinePlayers()) {
                 result.add(playerInfoOf(p));
             }
             result.sort(java.util.Comparator.comparing(PlayerInfo::name));
@@ -165,7 +170,7 @@ public final class PaperServerFacade implements ServerFacade {
         });
     }
 
-    private static PlayerInfo playerInfoOf(Player p) {
+    private static PlayerInfo playerInfoOf(final Player p) {
         return new PlayerInfo(
                 p.getUniqueId(),
                 p.getName(),
@@ -181,14 +186,14 @@ public final class PaperServerFacade implements ServerFacade {
     }
 
     @Override
-    public PlayerDetails playerInfo(UUID uuid) {
+    public PlayerDetails playerInfo(final UUID uuid) {
         return mainThread.call(() -> {
-            Player p = Bukkit.getPlayer(uuid);
+            final Player p = Bukkit.getPlayer(uuid);
             if (p == null) {
                 throw new FacadeException("player not online: " + uuid);
             }
-            List<String> effects = new ArrayList<>();
-            for (PotionEffect effect : p.getActivePotionEffects()) {
+            final List<String> effects = new ArrayList<>();
+            for (final PotionEffect effect : p.getActivePotionEffects()) {
                 effects.add(
                         effect.getType().getKey().getKey() + ":" + effect.getAmplifier() + ":" + effect.getDuration());
             }
@@ -197,14 +202,14 @@ public final class PaperServerFacade implements ServerFacade {
     }
 
     @Override
-    public StatsInfo playerStats(UUID uuid) {
+    public StatsInfo playerStats(final UUID uuid) {
         return mainThread.call(() -> {
-            Player p = Bukkit.getPlayer(uuid);
+            final Player p = Bukkit.getPlayer(uuid);
             if (p == null) {
                 throw new FacadeException("player not online: " + uuid);
             }
-            Map<String, Object> stats = new LinkedHashMap<>();
-            for (Statistic stat : Statistic.values()) {
+            final Map<String, Object> stats = new LinkedHashMap<>();
+            for (final Statistic stat : Statistic.values()) {
                 if (stat.getType() != Statistic.Type.UNTYPED) {
                     continue;
                 }
@@ -219,30 +224,40 @@ public final class PaperServerFacade implements ServerFacade {
     }
 
     @Override
-    public BlockInfo blockAt(String worldKey, int x, int y, int z) {
+    public BlockInfo blockAt(final String worldKey, final int x, final int y, final int z) {
         return mainThread.call(() -> {
-            World w = requireWorld(worldKey);
+            final World w = requireWorld(worldKey);
             if (y < w.getMinHeight() || y > w.getMaxHeight()) {
                 throw new FacadeException(
                         "y out of world height range [" + w.getMinHeight() + ", " + w.getMaxHeight() + "]");
             }
-            Block b = w.getBlockAt(x, y, z);
+            final Block b = w.getBlockAt(x, y, z);
             return blockInfoOf(w, b, x, y, z);
         });
     }
 
     @Override
-    public List<BlockInfo> region(String worldKey, int x1, int y1, int z1, int x2, int y2, int z2, int cap) {
-        // Phase 1 (main thread): capture chunk snapshots. getChunkAt may load chunks and
-        // must run on the main thread, but ChunkSnapshot reads are safe off-thread (spec 4.4).
-        Map<String, org.bukkit.ChunkSnapshot> snapshots = mainThread.call(() -> {
-            World w = requireWorld(worldKey);
-            Map<String, org.bukkit.ChunkSnapshot> map = new LinkedHashMap<>();
+    public List<BlockInfo> region(
+            final String worldKey,
+            final int x1,
+            final int y1,
+            final int z1,
+            final int x2,
+            final int y2,
+            final int z2,
+            final int cap) {
+        // Phase 1 (main thread): capture chunk snapshots. getChunkAt may load chunks
+        // and
+        // must run on the main thread, but ChunkSnapshot reads are safe off-thread
+        // (spec 4.4).
+        final Map<String, org.bukkit.ChunkSnapshot> snapshots = mainThread.call(() -> {
+            final World w = requireWorld(worldKey);
+            final Map<String, org.bukkit.ChunkSnapshot> map = new LinkedHashMap<>();
             for (int x = x1; x <= x2 && map.size() < 128; x++) {
                 for (int z = z1; z <= z2 && map.size() < 128; z++) {
-                    int cx = x >> 4;
-                    int cz = z >> 4;
-                    String key = cx + "," + cz;
+                    final int cx = x >> 4;
+                    final int cz = z >> 4;
+                    final String key = cx + "," + cz;
                     if (!map.containsKey(key)) {
                         map.put(key, w.getChunkAt(cx, cz).getChunkSnapshot(true, true, false));
                     }
@@ -257,21 +272,22 @@ public final class PaperServerFacade implements ServerFacade {
         if (volume > cap) {
             volume = cap;
         }
-        List<BlockInfo> result = new ArrayList<>(Math.min(volume, cap));
+        final List<BlockInfo> result = new ArrayList<>(Math.min(volume, cap));
         for (int x = x1; x <= x2 && result.size() < cap; x++) {
             for (int y = y1; y <= y2 && result.size() < cap; y++) {
                 for (int z = z1; z <= z2 && result.size() < cap; z++) {
-                    String key = (x >> 4) + "," + (z >> 4);
-                    org.bukkit.ChunkSnapshot snapshot = snapshots.get(key);
+                    final String key = (x >> 4) + "," + (z >> 4);
+                    final org.bukkit.ChunkSnapshot snapshot = snapshots.get(key);
                     if (snapshot == null) {
                         continue;
                     }
-                    int localX = x & 15;
-                    int localZ = z & 15;
-                    Material material = snapshot.getBlockType(localX, y, localZ);
-                    String blockData = snapshot.getBlockData(localX, y, localZ).getAsString();
-                    int light = snapshot.getBlockEmittedLight(localX, y, localZ);
-                    int skyLight = snapshot.getBlockSkyLight(localX, y, localZ);
+                    final int localX = x & 15;
+                    final int localZ = z & 15;
+                    final Material material = snapshot.getBlockType(localX, y, localZ);
+                    final String blockData =
+                            snapshot.getBlockData(localX, y, localZ).getAsString();
+                    final int light = snapshot.getBlockEmittedLight(localX, y, localZ);
+                    final int skyLight = snapshot.getBlockSkyLight(localX, y, localZ);
                     result.add(new BlockInfo(
                             worldKey,
                             x,
@@ -290,12 +306,12 @@ public final class PaperServerFacade implements ServerFacade {
     }
 
     @Override
-    public List<EntityInfo> entities(String worldKey, String type, int limit, int page) {
+    public List<EntityInfo> entities(final String worldKey, final String type, final int limit, final int page) {
         return mainThread.call(() -> {
-            World w = requireWorld(worldKey);
-            List<EntityInfo> all = new ArrayList<>();
-            for (Entity e : w.getEntities()) {
-                String entityType = e.getType().getKey().getKey();
+            final World w = requireWorld(worldKey);
+            final List<EntityInfo> all = new ArrayList<>();
+            for (final Entity e : w.getEntities()) {
+                final String entityType = e.getType().getKey().getKey();
                 if (type != null && !type.isBlank() && !entityType.equalsIgnoreCase(type)) {
                     continue;
                 }
@@ -306,11 +322,11 @@ public final class PaperServerFacade implements ServerFacade {
                         e.getLocation().getY(),
                         e.getLocation().getZ(),
                         worldKey,
-                        e instanceof LivingEntity le ? le.getHealth() : -1,
+                        e instanceof final LivingEntity le ? le.getHealth() : -1,
                         entityDisplayName(e)));
             }
             all.sort(java.util.Comparator.comparing(e -> e.uuid().toString()));
-            int from = page * limit;
+            final int from = page * limit;
             if (from >= all.size()) {
                 return List.of();
             }
@@ -319,26 +335,26 @@ public final class PaperServerFacade implements ServerFacade {
     }
 
     @Override
-    public EntityDetails entityInfo(UUID uuid) {
+    public EntityDetails entityInfo(final UUID uuid) {
         return mainThread.call(() -> {
-            for (World w : Bukkit.getWorlds()) {
-                for (Entity e : w.getEntities()) {
+            for (final World w : Bukkit.getWorlds()) {
+                for (final Entity e : w.getEntities()) {
                     if (e.getUniqueId().equals(uuid)) {
-                        List<String> passengers = new ArrayList<>();
-                        for (Entity p : e.getPassengers()) {
+                        final List<String> passengers = new ArrayList<>();
+                        for (final Entity p : e.getPassengers()) {
                             passengers.add(p.getType().getKey().getKey());
                         }
-                        String vehicle = e.getVehicle() == null
+                        final String vehicle = e.getVehicle() == null
                                 ? null
                                 : e.getVehicle().getType().getKey().getKey();
-                        EntityInfo base = new EntityInfo(
+                        final EntityInfo base = new EntityInfo(
                                 e.getUniqueId(),
                                 e.getType().getKey().getKey(),
                                 e.getLocation().getX(),
                                 e.getLocation().getY(),
                                 e.getLocation().getZ(),
                                 w.getName(),
-                                e instanceof LivingEntity le ? le.getHealth() : -1,
+                                e instanceof final LivingEntity le ? le.getHealth() : -1,
                                 entityDisplayName(e));
                         return new EntityDetails(base, passengers, vehicle);
                     }
@@ -349,9 +365,9 @@ public final class PaperServerFacade implements ServerFacade {
     }
 
     @Override
-    public void messagePlayer(UUID uuid, String text, boolean allowFormatting) {
+    public void messagePlayer(final UUID uuid, final String text, final boolean allowFormatting) {
         mainThread.call(() -> {
-            Player p = Bukkit.getPlayer(uuid);
+            final Player p = Bukkit.getPlayer(uuid);
             if (p == null) {
                 throw new FacadeException("player not online: " + uuid);
             }
@@ -361,9 +377,9 @@ public final class PaperServerFacade implements ServerFacade {
     }
 
     @Override
-    public void kickPlayer(UUID uuid, String reason) {
+    public void kickPlayer(final UUID uuid, final String reason) {
         mainThread.call(() -> {
-            Player p = Bukkit.getPlayer(uuid);
+            final Player p = Bukkit.getPlayer(uuid);
             if (p == null) {
                 throw new FacadeException("player not online: " + uuid);
             }
@@ -373,30 +389,37 @@ public final class PaperServerFacade implements ServerFacade {
     }
 
     @Override
-    public void teleport(UUID uuid, int[] coords, String worldKey, UUID targetUuid) {
+    public void teleport(final UUID uuid, final UUID targetUuid) {
         mainThread.call(() -> {
-            Player p = Bukkit.getPlayer(uuid);
+            final Player p = Bukkit.getPlayer(uuid);
             if (p == null) {
                 throw new FacadeException("player not online: " + uuid);
             }
-            if (targetUuid != null) {
-                Player target = Bukkit.getPlayer(targetUuid);
-                if (target == null) {
-                    throw new FacadeException("target player not online: " + targetUuid);
-                }
-                p.teleport(target.getLocation());
-                return null;
+            final Player target = Bukkit.getPlayer(targetUuid);
+            if (target == null) {
+                throw new FacadeException("target player not online: " + targetUuid);
             }
-            World w = requireWorld(worldKey);
-            p.teleport(new org.bukkit.Location(w, coords[0] + 0.5, coords[1], coords[2] + 0.5));
+            p.teleport(target.getLocation());
             return null;
         });
     }
 
     @Override
-    public void setGamemode(UUID uuid, String gamemode) {
+    public void teleport(final UUID uuid, final Location loc) {
         mainThread.call(() -> {
-            Player p = Bukkit.getPlayer(uuid);
+            final Player p = Bukkit.getPlayer(uuid);
+            if (p == null) {
+                throw new FacadeException("player not online: " + uuid);
+            }
+            p.teleport(loc);
+            return null;
+        });
+    }
+
+    @Override
+    public void setGamemode(final UUID uuid, final String gamemode) {
+        mainThread.call(() -> {
+            final Player p = Bukkit.getPlayer(uuid);
             if (p == null) {
                 throw new FacadeException("player not online: " + uuid);
             }
@@ -406,13 +429,13 @@ public final class PaperServerFacade implements ServerFacade {
     }
 
     @Override
-    public void applyEffect(UUID uuid, String effect, int durationSeconds, int amplifier) {
+    public void applyEffect(final UUID uuid, final String effect, final int durationSeconds, final int amplifier) {
         mainThread.call(() -> {
-            Player p = Bukkit.getPlayer(uuid);
+            final Player p = Bukkit.getPlayer(uuid);
             if (p == null) {
                 throw new FacadeException("player not online: " + uuid);
             }
-            PotionEffectType type = org.bukkit.Registry.EFFECT.get(org.bukkit.NamespacedKey.minecraft(effect));
+            final PotionEffectType type = org.bukkit.Registry.EFFECT.get(org.bukkit.NamespacedKey.minecraft(effect));
             if (type == null) {
                 throw new FacadeException("unknown effect: " + effect);
             }
@@ -422,12 +445,12 @@ public final class PaperServerFacade implements ServerFacade {
     }
 
     @Override
-    public void ban(UUID uuid, String reason) {
+    public void ban(final UUID uuid, final String reason) {
         mainThread.call(() -> {
-            OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
-            ProfileBanList bans = Bukkit.getBanList(BanListType.PROFILE);
+            final OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
+            final ProfileBanList bans = Bukkit.getBanList(BanListType.PROFILE);
             bans.addBan(op.getPlayerProfile(), reason, (Instant) null, "mc2p");
-            Player online = Bukkit.getPlayer(uuid);
+            final Player online = Bukkit.getPlayer(uuid);
             if (online != null) {
                 online.kick(reason == null || reason.isBlank() ? null : Component.text(stripFormatting(reason)));
             }
@@ -436,38 +459,38 @@ public final class PaperServerFacade implements ServerFacade {
     }
 
     @Override
-    public void unban(UUID uuid) {
+    public void unban(final UUID uuid) {
         mainThread.call(() -> {
-            OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
-            ProfileBanList bans = Bukkit.getBanList(BanListType.PROFILE);
+            final OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
+            final ProfileBanList bans = Bukkit.getBanList(BanListType.PROFILE);
             bans.pardon(op.getPlayerProfile());
             return null;
         });
     }
 
     @Override
-    public void whitelistAdd(UUID uuid) {
+    public void whitelistAdd(final UUID uuid) {
         mainThread.call(() -> {
-            OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
+            final OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
             op.setWhitelisted(true);
             return null;
         });
     }
 
     @Override
-    public void whitelistRemove(UUID uuid) {
+    public void whitelistRemove(final UUID uuid) {
         mainThread.call(() -> {
-            OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
+            final OfflinePlayer op = Bukkit.getOfflinePlayer(uuid);
             op.setWhitelisted(false);
             return null;
         });
     }
 
     @Override
-    public void setBlock(String worldKey, int x, int y, int z, String material) {
+    public void setBlock(final String worldKey, final int x, final int y, final int z, final String material) {
         mainThread.call(() -> {
-            World w = requireWorld(worldKey);
-            Material m = Material.matchMaterial(material);
+            final World w = requireWorld(worldKey);
+            final Material m = Material.matchMaterial(material);
             if (m == null || !m.isBlock()) {
                 throw new FacadeException("unknown or non-block material: " + material);
             }
@@ -477,14 +500,14 @@ public final class PaperServerFacade implements ServerFacade {
     }
 
     @Override
-    public CommandResult executeCommand(String command) {
+    public CommandResult executeCommand(final String command) {
         return mainThread.call(() -> {
-            ConsoleCommandSender console = Bukkit.getConsoleSender();
-            RecordingCommandSender recording = new RecordingCommandSender(console);
+            final ConsoleCommandSender console = Bukkit.getConsoleSender();
+            final RecordingCommandSender recording = new RecordingCommandSender(console);
             boolean ok;
             try {
                 ok = Bukkit.dispatchCommand(recording, command);
-            } catch (Throwable t) {
+            } catch (final Throwable t) {
                 return new CommandResult(false, recording.output(), t.getMessage());
             }
             return new CommandResult(ok, recording.output(), ok ? null : "command returned failure");
@@ -508,22 +531,22 @@ public final class PaperServerFacade implements ServerFacade {
     }
 
     @Override
-    public void scheduleRestart(String announce, int countdownSeconds) {
+    public void scheduleRestart(final String announce, final int countdownSeconds) {
         mainThread.run(() -> scheduleShutdown(announce, countdownSeconds, true));
     }
 
     @Override
-    public void scheduleStop(String announce, int countdownSeconds) {
+    public void scheduleStop(final String announce, final int countdownSeconds) {
         mainThread.run(() -> scheduleShutdown(announce, countdownSeconds, false));
     }
 
-    private void scheduleShutdown(String announce, int countdownSeconds, boolean restart) {
-        String message = (restart ? "Server restarting" : "Server stopping") + " in "
+    private void scheduleShutdown(final String announce, final int countdownSeconds, final boolean restart) {
+        final String message = (restart ? "Server restarting" : "Server stopping") + " in "
                 + countdownSeconds + " second" + (countdownSeconds == 1 ? "" : "s")
                 + (announce == null || announce.isBlank() ? "" : " - " + announce);
         Bukkit.broadcast(Component.text(stripFormatting(message)));
         for (int i = countdownSeconds; i > 0; i--) {
-            int remaining = i;
+            final int remaining = i;
             Bukkit.getScheduler()
                     .runTaskLater(
                             plugin,
@@ -538,13 +561,13 @@ public final class PaperServerFacade implements ServerFacade {
         Bukkit.getScheduler().runTaskLater(plugin, () -> doShutdown(restart), countdownSeconds * 20L + 20L);
     }
 
-    private void doShutdown(boolean restart) {
+    private void doShutdown(final boolean restart) {
         if (restart) {
             try {
                 if (trySpigotRestart()) {
                     return;
                 }
-            } catch (Throwable t) {
+            } catch (final Throwable t) {
                 log.warn("spigot restart unavailable ({}), falling back to graceful stop", t.getMessage());
             }
             // host-restart fallback: graceful stop; the host panel reboots on exit
@@ -558,17 +581,17 @@ public final class PaperServerFacade implements ServerFacade {
     }
 
     @Override
-    public boolean worldExists(String worldKey) {
+    public boolean worldExists(final String worldKey) {
         return mainThread.call(() -> Bukkit.getWorld(worldKey) != null);
     }
 
     // ---- internals ----
 
-    private World requireWorld(String worldKey) {
+    private World requireWorld(final String worldKey) {
         if (!Validators.isSafeWorldKey(worldKey)) {
             throw new FacadeException("invalid world key");
         }
-        World w = Bukkit.getWorld(worldKey);
+        final World w = Bukkit.getWorld(worldKey);
         if (w == null) {
             throw new FacadeException("unknown world: " + worldKey);
         }
@@ -577,9 +600,9 @@ public final class PaperServerFacade implements ServerFacade {
 
     private static double[] safeTps() {
         try {
-            double[] tps = Bukkit.getTPS();
+            final double[] tps = Bukkit.getTPS();
             return tps == null ? new double[] {20.0} : tps;
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             return new double[] {20.0};
         }
     }
@@ -587,20 +610,20 @@ public final class PaperServerFacade implements ServerFacade {
     private static long safeTick() {
         try {
             return Bukkit.getCurrentTick();
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             return 0;
         }
     }
 
-    private static int safePing(Player p) {
+    private static int safePing(final Player p) {
         try {
             return p.getPing();
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             return -1;
         }
     }
 
-    private static String dimensionName(World.Environment env) {
+    private static String dimensionName(final World.Environment env) {
         return switch (env) {
             case NORMAL -> "overworld";
             case NETHER -> "nether";
@@ -609,47 +632,47 @@ public final class PaperServerFacade implements ServerFacade {
         };
     }
 
-    private static String entityDisplayName(Entity e) {
+    private static String entityDisplayName(final Entity e) {
         try {
-            if (e instanceof Player p) {
+            if (e instanceof final Player p) {
                 return p.getName();
             }
-            if (e instanceof LivingEntity le) {
-                Component custom = le.customName();
+            if (e instanceof final LivingEntity le) {
+                final Component custom = le.customName();
                 if (custom != null) {
-                    String name = PlainTextComponentSerializer.plainText().serialize(custom);
+                    final String name = PlainTextComponentSerializer.plainText().serialize(custom);
                     if (!name.isBlank()) {
                         return name;
                     }
                 }
             }
-        } catch (Throwable ignored) {
+        } catch (final Throwable ignored) {
             // fall through
         }
         return null;
     }
 
-    private static String stripFormatting(String text) {
+    private static String stripFormatting(final String text) {
         if (text == null) {
             return null;
         }
-        String plain = PlainTextComponentSerializer.plainText()
+        final String plain = PlainTextComponentSerializer.plainText()
                 .serialize(LegacyComponentSerializer.legacySection().deserialize(text));
         return plain.replaceAll("&[0-9a-fk-orA-FK-OR]", "");
     }
 
-    private static BlockInfo blockInfoOf(World w, Block b, int x, int y, int z) {
+    private static BlockInfo blockInfoOf(final World w, final Block b, final int x, final int y, final int z) {
         String biome = "unknown";
         try {
             biome = w.getBiome(x, y, z).getKey().getKey();
-        } catch (Throwable ignored) {
+        } catch (final Throwable ignored) {
         }
         int light = -1;
         int sky = -1;
         try {
             light = b.getLightLevel();
             sky = b.getLightFromSky();
-        } catch (Throwable ignored) {
+        } catch (final Throwable ignored) {
         }
         return new BlockInfo(
                 w.getName(),
@@ -664,22 +687,29 @@ public final class PaperServerFacade implements ServerFacade {
                 w.isChunkLoaded(x >> 4, z >> 4));
     }
 
-    /** Off-thread-safe biome name from a snapshot only (snapshots carry biomes when captured with includeBiome). */
-    private static String snapshotBiomeName(org.bukkit.ChunkSnapshot snapshot, int x, int y, int z) {
+    /**
+     * Off-thread-safe biome name from a snapshot only (snapshots carry biomes when
+     * captured with includeBiome).
+     */
+    private static String snapshotBiomeName(
+            final org.bukkit.ChunkSnapshot snapshot, final int x, final int y, final int z) {
         try {
             return snapshot.getBiome(x, y, z).getKey().getKey();
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             return "unknown";
         }
     }
 
-    /** Delegates to the console sender while recording output lines for the tool response. */
+    /**
+     * Delegates to the console sender while recording output lines for the tool
+     * response.
+     */
     private static final class RecordingCommandSender implements ConsoleCommandSender {
 
         private final ConsoleCommandSender delegate;
         private final StringBuilder output = new StringBuilder();
 
-        RecordingCommandSender(ConsoleCommandSender delegate) {
+        RecordingCommandSender(final ConsoleCommandSender delegate) {
             this.delegate = delegate;
         }
 
@@ -687,7 +717,7 @@ public final class PaperServerFacade implements ServerFacade {
             return output.toString();
         }
 
-        private void record(String message) {
+        private void record(final String message) {
             if (output.length() > 0) {
                 output.append('\n');
             }
@@ -698,40 +728,40 @@ public final class PaperServerFacade implements ServerFacade {
         }
 
         @Override
-        public void sendMessage(String message) {
+        public void sendMessage(final String message) {
             delegate.sendMessage(message);
             record(stripFormatting(message));
         }
 
         @Override
-        public void sendMessage(String... messages) {
+        public void sendMessage(final String... messages) {
             delegate.sendMessage(messages);
-            for (String message : messages) {
+            for (final String message : messages) {
                 record(stripFormatting(message));
             }
         }
 
         @Override
-        public void sendMessage(java.util.UUID uuid, String message) {
+        public void sendMessage(final java.util.UUID uuid, final String message) {
             delegate.sendMessage(message);
             record(stripFormatting(message));
         }
 
         @Override
-        public void sendMessage(java.util.UUID uuid, String... messages) {
+        public void sendMessage(final java.util.UUID uuid, final String... messages) {
             delegate.sendMessage(messages);
-            for (String message : messages) {
+            for (final String message : messages) {
                 record(stripFormatting(message));
             }
         }
 
         @Override
-        public void sendRawMessage(String message) {
+        public void sendRawMessage(final String message) {
             delegate.sendRawMessage(message);
         }
 
         @Override
-        public void sendRawMessage(java.util.UUID uuid, String message) {
+        public void sendRawMessage(final java.util.UUID uuid, final String message) {
             delegate.sendRawMessage(message);
         }
 
@@ -761,53 +791,54 @@ public final class PaperServerFacade implements ServerFacade {
         }
 
         @Override
-        public void setOp(boolean value) {
+        public void setOp(final boolean value) {
             delegate.setOp(value);
         }
 
         @Override
-        public boolean isPermissionSet(String name) {
+        public boolean isPermissionSet(final String name) {
             return delegate.isPermissionSet(name);
         }
 
         @Override
-        public boolean isPermissionSet(org.bukkit.permissions.Permission perm) {
+        public boolean isPermissionSet(final org.bukkit.permissions.Permission perm) {
             return delegate.isPermissionSet(perm);
         }
 
         @Override
-        public boolean hasPermission(String name) {
+        public boolean hasPermission(final String name) {
             return delegate.hasPermission(name);
         }
 
         @Override
-        public boolean hasPermission(org.bukkit.permissions.Permission perm) {
+        public boolean hasPermission(final org.bukkit.permissions.Permission perm) {
             return delegate.hasPermission(perm);
         }
 
         @Override
-        public org.bukkit.permissions.PermissionAttachment addAttachment(Plugin plugin, String name, boolean value) {
+        public org.bukkit.permissions.PermissionAttachment addAttachment(
+                final Plugin plugin, final String name, final boolean value) {
             return delegate.addAttachment(plugin, name, value);
         }
 
         @Override
-        public org.bukkit.permissions.PermissionAttachment addAttachment(Plugin plugin) {
+        public org.bukkit.permissions.PermissionAttachment addAttachment(final Plugin plugin) {
             return delegate.addAttachment(plugin);
         }
 
         @Override
         public org.bukkit.permissions.PermissionAttachment addAttachment(
-                Plugin plugin, String name, boolean value, int ticks) {
+                final Plugin plugin, final String name, final boolean value, final int ticks) {
             return delegate.addAttachment(plugin, name, value, ticks);
         }
 
         @Override
-        public org.bukkit.permissions.PermissionAttachment addAttachment(Plugin plugin, int ticks) {
+        public org.bukkit.permissions.PermissionAttachment addAttachment(final Plugin plugin, final int ticks) {
             return delegate.addAttachment(plugin, ticks);
         }
 
         @Override
-        public void removeAttachment(org.bukkit.permissions.PermissionAttachment attachment) {
+        public void removeAttachment(final org.bukkit.permissions.PermissionAttachment attachment) {
             delegate.removeAttachment(attachment);
         }
 
@@ -827,24 +858,24 @@ public final class PaperServerFacade implements ServerFacade {
         }
 
         @Override
-        public void acceptConversationInput(String input) {
+        public void acceptConversationInput(final String input) {
             delegate.acceptConversationInput(input);
         }
 
         @Override
-        public boolean beginConversation(org.bukkit.conversations.Conversation conversation) {
+        public boolean beginConversation(final org.bukkit.conversations.Conversation conversation) {
             return delegate.beginConversation(conversation);
         }
 
         @Override
-        public void abandonConversation(org.bukkit.conversations.Conversation conversation) {
+        public void abandonConversation(final org.bukkit.conversations.Conversation conversation) {
             delegate.abandonConversation(conversation);
         }
 
         @Override
         public void abandonConversation(
-                org.bukkit.conversations.Conversation conversation,
-                org.bukkit.conversations.ConversationAbandonedEvent details) {
+                final org.bukkit.conversations.Conversation conversation,
+                final org.bukkit.conversations.ConversationAbandonedEvent details) {
             delegate.abandonConversation(conversation, details);
         }
     }

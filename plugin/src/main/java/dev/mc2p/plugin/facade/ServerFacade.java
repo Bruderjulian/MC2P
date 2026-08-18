@@ -12,6 +12,7 @@ import dev.mc2p.plugin.facade.model.Model.Status;
 import dev.mc2p.plugin.facade.model.Model.WorldInfo;
 import java.util.List;
 import java.util.UUID;
+import org.bukkit.Location;
 
 /**
  * Abstraction over the host server, implemented for Paper. All Bukkit API access happens
@@ -55,7 +56,9 @@ public interface ServerFacade {
 
     void kickPlayer(UUID uuid, String reason);
 
-    void teleport(UUID uuid, int[] coords, String worldKey, UUID targetUuid);
+    void teleport(UUID uuid, UUID targetUuid);
+
+    void teleport(UUID uuid, Location loc);
 
     void setGamemode(UUID uuid, String gamemode);
 

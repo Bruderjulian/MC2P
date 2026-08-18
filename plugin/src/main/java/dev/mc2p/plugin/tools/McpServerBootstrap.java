@@ -84,12 +84,18 @@ public final class McpServerBootstrap {
         if (context == null) {
             return AuthContext.unauthenticated();
         }
-        Object role = context.get(McpRequestContextExtractor.KEY_ROLE);
+        Object restrictions = context.get(McpRequestContextExtractor.KEY_RESTRICTIONS);
         Object tokenId = context.get(McpRequestContextExtractor.KEY_TOKEN_ID);
         Object remoteIp = context.get(McpRequestContextExtractor.KEY_REMOTE_IP);
         Object clientName = context.get(McpRequestContextExtractor.KEY_CLIENT_NAME);
+        dev.mc2p.common.config.RestrictionsConfig parsed =
+                restrictions instanceof dev.mc2p.common.config.RestrictionsConfig rc
+                        ? rc
+                        : restrictions instanceof java.util.Map<?, ?> m
+                                ? dev.mc2p.common.config.RestrictionsConfig.load((java.util.Map<String, Object>) m)
+                                : null;
         return new AuthContext(
-                role instanceof dev.mc2p.common.role.Role r ? r : null,
+                parsed,
                 clientName == null ? "" : String.valueOf(clientName),
                 tokenId == null ? "" : String.valueOf(tokenId),
                 remoteIp == null ? "" : String.valueOf(remoteIp),

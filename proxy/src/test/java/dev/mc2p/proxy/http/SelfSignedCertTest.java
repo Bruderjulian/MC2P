@@ -58,8 +58,7 @@ class SelfSignedCertTest {
         environment.set(PASSWORD_ENV, "   ");
         Path keystore = tempDir.resolve("k.p12");
         Files.writeString(keystore, "existing");
-        assertThrows(
-                IllegalStateException.class, () -> SelfSignedCert.ensureKeystore(keystore, PASSWORD_ENV, "srv"));
+        assertThrows(IllegalStateException.class, () -> SelfSignedCert.ensureKeystore(keystore, PASSWORD_ENV, "srv"));
     }
 
     @Test

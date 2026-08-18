@@ -79,7 +79,8 @@ class ModelTest {
     @Test
     void playerInfoToMap() {
         UUID uuid = UUID.randomUUID();
-        Model.PlayerInfo p = new Model.PlayerInfo(uuid, "alice", 42, "survival", 20.0, 20, 100, 1.5, 64.0, -3.25, "world");
+        Model.PlayerInfo p =
+                new Model.PlayerInfo(uuid, "alice", 42, "survival", 20.0, 20, 100, 1.5, 64.0, -3.25, "world");
         Map<String, Object> m = p.toMap();
         assertEquals(uuid.toString(), m.get("uuid"));
         assertEquals("alice", m.get("name"));
@@ -140,8 +141,8 @@ class ModelTest {
 
     @Test
     void entityDetailsNullVehicleBecomesEmpty() {
-        Model.EntityInfo base = new Model.EntityInfo(
-                UUID.randomUUID(), "zombie", 1.0, 2.0, 3.0, "world", 10.0, "zombie");
+        Model.EntityInfo base =
+                new Model.EntityInfo(UUID.randomUUID(), "zombie", 1.0, 2.0, 3.0, "world", 10.0, "zombie");
         Model.EntityDetails d = new Model.EntityDetails(base, List.of(), null);
         Map<String, Object> m = d.toMap();
         assertEquals("zombie", m.get("type"));

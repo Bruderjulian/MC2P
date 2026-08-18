@@ -1,5 +1,6 @@
 package dev.mc2p.plugin.rpc;
 
+import dev.mc2p.common.config.RestrictionsConfig;
 import dev.mc2p.common.json.Json;
 import dev.mc2p.common.rpc.RpcMessage;
 import dev.mc2p.common.util.Tokens;
@@ -17,8 +18,8 @@ import org.slf4j.LoggerFactory;
 /**
  * Backend-mode listener for the {@code mc2p:rpc} plugin-messaging channel. Authenticates
  * the proxy with the shared {@code proxySecret}, then serves tool requests carrying the
- * client role (re-checked by the tool layer). Backends behind a proxy open zero HTTP
- * ports.
+ * client restrictions (re-checked by the tool layer and intersected with this backend's
+ * own {@code server-restrictions}). Backends behind a proxy open zero HTTP ports.
  */
 public final class BackendRpcServer implements PluginMessageListener {
 
@@ -26,6 +27,7 @@ public final class BackendRpcServer implements PluginMessageListener {
 
     private final Plugin plugin;
     private final ToolInvoker invoker;
+    private final RestrictionsConfig serverRestrictions;
     private final String serverId;
     private final String channel;
     private final String proxySecret;
@@ -46,12 +48,14 @@ public final class BackendRpcServer implements PluginMessageListener {
     public BackendRpcServer(
             Plugin plugin,
             ToolInvoker invoker,
+            RestrictionsConfig serverRestrictions,
             String serverId,
             String channel,
             String proxySecret,
             long timeoutMillis) {
         this.plugin = plugin;
         this.invoker = invoker;
+        this.serverRestrictions = serverRestrictions;
         this.serverId = serverId;
         this.channel = channel;
         this.proxySecret = proxySecret;
@@ -108,20 +112,19 @@ public final class BackendRpcServer implements PluginMessageListener {
         }
         String id = RpcMessage.id(message);
         String method = String.valueOf(message.get("method"));
-        String role = String.valueOf(message.getOrDefault("role", ""));
         String client = String.valueOf(message.getOrDefault("client", ""));
         @SuppressWarnings("unchecked")
         Map<String, Object> params = (Map<String, Object>) message.getOrDefault("params", Map.of());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> envelopeRestrictions = (Map<String, Object>) message.getOrDefault("restrictions", Map.of());
 
         if (id == null || method.isBlank()) {
             return;
         }
-        dev.mc2p.common.role.Role parsedRole = dev.mc2p.common.role.Role.fromString(role);
-        if (parsedRole == null) {
-            sendResponse(player, id, RpcMessage.response(id, false, null, "invalid role in envelope"));
-            return;
-        }
-        AuthContext auth = new AuthContext(parsedRole, client, "rpc:" + parsedRole, senderAddress(player), "rpc");
+        RestrictionsConfig parsed = RestrictionsConfig.load(envelopeRestrictions);
+        String tokenId = String.valueOf(message.getOrDefault("tokenId", ""));
+        RestrictionsConfig effective = serverRestrictions.merge(parsed);
+        AuthContext auth = new AuthContext(effective, client, tokenId, senderAddress(player), "rpc");
         try {
             var result = invoker.invoke(method, params, auth);
             Map<String, Object> encoded = RpcResultCodec.encode(result);

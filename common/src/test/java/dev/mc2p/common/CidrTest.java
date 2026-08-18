@@ -50,7 +50,10 @@ class CidrTest {
         assertThrows(IllegalArgumentException.class, () -> Cidr.parse("10.0.0.0/-1"));
         assertTrue(Cidr.parseAll(Arrays.asList("", "  ", null)).isEmpty());
         assertTrue(Cidr.parseAll(null).isEmpty());
-        assertEquals(2, Cidr.parseAll(Arrays.asList("10.0.0.0/8", " ", "172.16.0.0/12", null)).size());
+        assertEquals(
+                2,
+                Cidr.parseAll(Arrays.asList("10.0.0.0/8", " ", "172.16.0.0/12", null))
+                        .size());
     }
 
     @Test

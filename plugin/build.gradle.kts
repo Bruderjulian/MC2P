@@ -14,6 +14,11 @@ tasks.withType<JavaCompile>().configureEach {
     options.release.set(21)
 }
 
+repositories {
+    mavenCentral()
+    maven("https://repo.papermc.io/repository/maven-public/")
+}
+
 dependencies {
     implementation(project(":common"))
 

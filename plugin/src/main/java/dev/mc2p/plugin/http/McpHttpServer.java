@@ -1,6 +1,7 @@
 package dev.mc2p.plugin.http;
 
 import dev.mc2p.common.activity.ClientActivityTracker;
+import dev.mc2p.common.config.RestrictionsConfig;
 import dev.mc2p.common.http.HttpEndpointConfig;
 import dev.mc2p.common.ratelimit.TokenBucketRateLimiter;
 import dev.mc2p.common.tokens.TokenManager;
@@ -35,6 +36,7 @@ public final class McpHttpServer {
     public McpHttpServer(
             HttpEndpointConfig http,
             TokenManager tokens,
+            RestrictionsConfig serverRestrictions,
             java.util.List<String> ipAllowlist,
             TokenBucketRateLimiter.Config rateLimit,
             Path dataDir,
@@ -51,7 +53,8 @@ public final class McpHttpServer {
         this.server.setHandler(context);
 
         TokenBucketRateLimiter rateLimiter = new TokenBucketRateLimiter(rateLimit);
-        AuthFilter authFilter = new AuthFilter(tokens, ipAllowlist, rateLimiter, http.bodyLimitBytes(), activity);
+        AuthFilter authFilter =
+                new AuthFilter(tokens, serverRestrictions, ipAllowlist, rateLimiter, http.bodyLimitBytes(), activity);
         FilterHolder filterHolder = new FilterHolder(authFilter);
         context.addFilter(filterHolder, endpoint, EnumSet.of(DispatcherType.REQUEST));
     }

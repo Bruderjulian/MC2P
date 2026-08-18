@@ -1,9 +1,9 @@
 package dev.mc2p.proxy.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.mc2p.common.role.Role;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -17,8 +17,6 @@ class ProxyConfigTest {
         assertEquals(8443, config.mcp().port());
         assertEquals("/mcp", config.mcp().endpoint());
         assertEquals("selfsigned", config.mcp().tls().mode());
-        assertEquals("env:MC2P_TOKEN_READER", namedToken(config, "reader").source());
-        assertEquals(Role.READER, namedToken(config, "reader").role());
         assertEquals(5.0, config.auth().rateLimit().tokensPerSecond());
         assertEquals(20, config.auth().rateLimit().burst());
         assertEquals(5, config.auth().activityWindowMinutes());
@@ -27,36 +25,7 @@ class ProxyConfigTest {
         assertEquals(8, config.rpc().maxChunks());
         assertTrue(config.servers().isEmpty());
         assertEquals("logs/mcp-proxy-audit.log", config.audit().file());
-    }
-
-    @Test
-    void loadsNamedTokenList() {
-        Map<String, Object> yaml = Map.of(
-                "auth",
-                Map.of(
-                        "tokens",
-                        List.of(
-                                Map.of("name", "alice", "role", "ops", "token", "env:MC2P_TOKEN_ALICE"),
-                                Map.of("name", "ci-bot", "role", "reader", "token", "file:secrets/ci"))));
-
-        ProxyConfig config = ProxyConfig.load(yaml);
-        assertEquals(2, config.auth().tokens().size());
-        assertEquals("alice", config.auth().tokens().get(0).name());
-        assertEquals(Role.OPS, config.auth().tokens().get(0).role());
-        assertEquals("env:MC2P_TOKEN_ALICE", config.auth().tokens().get(0).source());
-        assertEquals("ci-bot", config.auth().tokens().get(1).name());
-        assertEquals(Role.READER, config.auth().tokens().get(1).role());
-    }
-
-    @Test
-    void loadsLegacyRoleMap() {
-        Map<String, Object> yaml = Map.of("auth", Map.of("tokens", Map.of("reader", "env:MC2P_TOKEN_READER")));
-
-        ProxyConfig config = ProxyConfig.load(yaml);
-        assertEquals(1, config.auth().tokens().size());
-        assertEquals("reader", config.auth().tokens().get(0).name());
-        assertEquals(Role.READER, config.auth().tokens().get(0).role());
-        assertEquals("env:MC2P_TOKEN_READER", config.auth().tokens().get(0).source());
+        assertFalse(config.globalRestrictions().enabled());
     }
 
     @Test
@@ -77,37 +46,20 @@ class ProxyConfigTest {
     }
 
     @Test
-    void skipsInvalidTokens() {
+    void loadsGlobalRestrictions() {
         Map<String, Object> yaml = Map.of(
-                "auth",
-                Map.of(
-                        "tokens",
-                        List.of(
-                                Map.of("name", "", "role", "ops", "token", "env:X"),
-                                Map.of("name", "n1", "role", "not-a-role", "token", "env:X"),
-                                Map.of("name", "n2", "role", "reader", "token", " "),
-                                Map.of("name", "valid", "role", "admin", "token", "env:V"))));
+                "global-restrictions",
+                Map.of("enabled", true, "tools", Map.of("enabled", true, "denylist", List.of("server_stop"))));
 
         ProxyConfig config = ProxyConfig.load(yaml);
-        assertEquals(1, config.auth().tokens().size());
-        assertEquals("valid", config.auth().tokens().get(0).name());
-        assertEquals(Role.ADMIN, config.auth().tokens().get(0).role());
+        assertTrue(config.globalRestrictions().enabled());
+        assertTrue(config.globalRestrictions().tools().denylist().contains("server_stop"));
     }
 
     @Test
-    void skipsUnknownRoleKeysInLegacyMap() {
-        Map<String, Object> yaml =
-                Map.of("auth", Map.of("tokens", Map.of("reader", "env:R", "not-a-role", "env:X")));
-
+    void authIpAllowlistLoads() {
+        Map<String, Object> yaml = Map.of("auth", Map.of("ip-allowlist", List.of("10.0.0.0/8", "127.0.0.1")));
         ProxyConfig config = ProxyConfig.load(yaml);
-        assertEquals(1, config.auth().tokens().size());
-        assertEquals("reader", config.auth().tokens().get(0).name());
-    }
-
-    private static ProxyConfig.AuthSection.NamedToken namedToken(ProxyConfig config, String name) {
-        return config.auth().tokens().stream()
-                .filter(t -> t.name().equals(name))
-                .findFirst()
-                .orElseThrow();
+        assertEquals(List.of("10.0.0.0/8", "127.0.0.1"), config.auth().ipAllowlist());
     }
 }

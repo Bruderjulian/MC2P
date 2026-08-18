@@ -2,7 +2,6 @@ package dev.mc2p.common.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -26,9 +25,8 @@ class TokensTest {
 
     @Test
     void generateTokenIsRandom() {
-        Set<String> tokens = IntStream.range(0, 100)
-                .mapToObj(i -> Tokens.generateToken())
-                .collect(Collectors.toSet());
+        Set<String> tokens =
+                IntStream.range(0, 100).mapToObj(i -> Tokens.generateToken()).collect(Collectors.toSet());
         assertEquals(100, tokens.size());
     }
 

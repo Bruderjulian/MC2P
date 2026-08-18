@@ -4,8 +4,8 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.ServerConnection;
 import dev.mc2p.common.audit.AuditLogger;
+import dev.mc2p.common.config.RestrictionsConfig;
 import dev.mc2p.common.json.Json;
-import dev.mc2p.common.role.Role;
 import dev.mc2p.common.validate.Validators;
 import dev.mc2p.proxy.http.McpRequestContextExtractor;
 import dev.mc2p.proxy.rpc.BackendClient;
@@ -34,8 +34,9 @@ import java.util.UUID;
  * <li>{@code fleet_status} and {@code player_locate} are proxy-level tools.</li>
  * </ul>
  *
- * Authorization is enforced twice: the role of the authenticated MCP client is checked
- * here and again by the backend tool layer, which receives the role in the RPC envelope.
+ * Authorization is enforced twice: the restrictions of the authenticated MCP client are
+ * checked here and again by the backend tool layer, which receives the restrictions in
+ * the RPC envelope.
  */
 public final class RelayTools {
 
@@ -43,7 +44,6 @@ public final class RelayTools {
     public record ToolDef(
             String name,
             String backendMethod,
-            Role requiredRole,
             boolean destructive,
             boolean playerTool,
             boolean broadcastable,
@@ -96,12 +96,11 @@ public final class RelayTools {
             ProxyServer proxy) {
         Map<String, Object> params = args == null ? Map.of() : args;
 
-        if (auth.role() == null) {
+        if (auth == null || auth.restrictions() == null) {
             return ToolResult.error("unauthenticated");
         }
-        if (!auth.role().can(def.requiredRole())) {
-            return ToolResult.error(
-                    "tool '" + def.name() + "' requires role " + def.requiredRole() + " (client: " + auth.role() + ")");
+        if (!auth.restrictions().isToolAllowed(def.name())) {
+            return ToolResult.error("tool '" + def.name() + "' is not allowed for this token");
         }
         if (def.destructive() && !Boolean.TRUE.equals(params.get("confirm"))) {
             return ToolResult.error("tool '" + def.name() + "' is destructive and requires confirm: true");
@@ -110,7 +109,6 @@ public final class RelayTools {
             // Fail closed: the relay must not proceed if the audit entry cannot be written.
             try {
                 audit.log(
-                        auth.role(),
                         auth.name(),
                         auth.tokenId(),
                         proxyServerId,
@@ -136,8 +134,8 @@ public final class RelayTools {
         relayParams.remove("server");
 
         if (targets.size() == 1) {
-            Optional<Map<String, Object>> response =
-                    client.call(targets.get(0), def.backendMethod(), auth.role().toString(), auth.name(), relayParams);
+            Optional<Map<String, Object>> response = client.call(
+                    targets.get(0), def.backendMethod(), auth.tokenId(), auth.restrictions(), auth.name(), relayParams);
             if (response.isEmpty()) {
                 return ToolResult.error("backend " + targets.get(0) + " unreachable or timed out");
             }
@@ -151,8 +149,8 @@ public final class RelayTools {
         Map<String, Object> servers = new LinkedHashMap<>();
         Map<String, Object> errors = new LinkedHashMap<>();
         for (String serverId : targets) {
-            Optional<Map<String, Object>> response =
-                    client.call(serverId, def.backendMethod(), auth.role().toString(), auth.name(), relayParams);
+            Optional<Map<String, Object>> response = client.call(
+                    serverId, def.backendMethod(), auth.tokenId(), auth.restrictions(), auth.name(), relayParams);
             if (response.isEmpty()) {
                 errors.put(serverId, "unreachable or timed out");
                 continue;
@@ -256,12 +254,15 @@ public final class RelayTools {
         if (context == null) {
             return AuthContext.unauthenticated();
         }
-        Object role = context.get(McpRequestContextExtractor.KEY_ROLE);
+        Object restrictions = context.get(McpRequestContextExtractor.KEY_RESTRICTIONS);
         Object tokenId = context.get(McpRequestContextExtractor.KEY_TOKEN_ID);
         Object remoteIp = context.get(McpRequestContextExtractor.KEY_REMOTE_IP);
         Object clientName = context.get(McpRequestContextExtractor.KEY_CLIENT_NAME);
+        RestrictionsConfig parsed = restrictions instanceof RestrictionsConfig rc
+                ? rc
+                : restrictions instanceof Map<?, ?> m ? RestrictionsConfig.load((Map<String, Object>) m) : null;
         return new AuthContext(
-                role instanceof Role r ? r : null,
+                parsed,
                 clientName == null ? "" : String.valueOf(clientName),
                 tokenId == null ? "" : String.valueOf(tokenId),
                 remoteIp == null ? "" : String.valueOf(remoteIp),
@@ -303,7 +304,6 @@ public final class RelayTools {
 
     private static ToolDef relay(
             String name,
-            Role role,
             boolean destructive,
             boolean playerTool,
             boolean broadcastable,
@@ -314,7 +314,6 @@ public final class RelayTools {
         return new ToolDef(
                 name,
                 name,
-                role,
                 destructive,
                 playerTool,
                 broadcastable,
@@ -328,7 +327,6 @@ public final class RelayTools {
         return new ToolDef(
                 "fleet_status",
                 "server_status",
-                Role.READER,
                 false,
                 false,
                 true,
@@ -342,7 +340,6 @@ public final class RelayTools {
         return new ToolDef(
                 "player_locate",
                 "player_locate",
-                Role.READER,
                 false,
                 false,
                 false,
@@ -356,7 +353,6 @@ public final class RelayTools {
             // ---- read tools ----
             relay(
                     "server_status",
-                    Role.READER,
                     false,
                     false,
                     true,
@@ -366,7 +362,6 @@ public final class RelayTools {
                     List.of()),
             relay(
                     "world_list",
-                    Role.READER,
                     false,
                     false,
                     true,
@@ -376,7 +371,6 @@ public final class RelayTools {
                     List.of()),
             relay(
                     "plugin_list",
-                    Role.READER,
                     false,
                     false,
                     true,
@@ -386,7 +380,6 @@ public final class RelayTools {
                     List.of()),
             relay(
                     "player_list",
-                    Role.READER,
                     false,
                     false,
                     true,
@@ -396,7 +389,6 @@ public final class RelayTools {
                     List.of()),
             relay(
                     "player_info",
-                    Role.READER,
                     false,
                     true,
                     true,
@@ -406,7 +398,6 @@ public final class RelayTools {
                     List.of("uuid")),
             relay(
                     "player_stats",
-                    Role.READER,
                     false,
                     true,
                     true,
@@ -416,7 +407,6 @@ public final class RelayTools {
                     List.of("uuid")),
             relay(
                     "block_get",
-                    Role.READER,
                     false,
                     false,
                     true,
@@ -430,7 +420,6 @@ public final class RelayTools {
                     List.of("world", "x", "y", "z")),
             relay(
                     "region_get",
-                    Role.READER,
                     false,
                     false,
                     true,
@@ -447,7 +436,6 @@ public final class RelayTools {
                     List.of("world", "x1", "y1", "z1", "x2", "y2", "z2")),
             relay(
                     "entity_list",
-                    Role.READER,
                     false,
                     false,
                     true,
@@ -461,7 +449,6 @@ public final class RelayTools {
                     List.of("world")),
             relay(
                     "entity_info",
-                    Role.READER,
                     false,
                     false,
                     true,
@@ -473,7 +460,6 @@ public final class RelayTools {
             // ---- player-targeted ops ----
             relay(
                     "player_message",
-                    Role.OPS,
                     false,
                     true,
                     false,
@@ -486,7 +472,6 @@ public final class RelayTools {
                     List.of("uuid", "text")),
             relay(
                     "player_kick",
-                    Role.OPS,
                     true,
                     true,
                     false,
@@ -499,7 +484,6 @@ public final class RelayTools {
                     List.of("uuid", "confirm")),
             relay(
                     "player_teleport",
-                    Role.OPS,
                     false,
                     true,
                     false,
@@ -515,7 +499,6 @@ public final class RelayTools {
                     List.of("uuid")),
             relay(
                     "player_gamemode",
-                    Role.OPS,
                     false,
                     true,
                     false,
@@ -527,7 +510,6 @@ public final class RelayTools {
                     List.of("uuid", "gamemode")),
             relay(
                     "player_effect",
-                    Role.OPS,
                     false,
                     true,
                     false,
@@ -543,7 +525,6 @@ public final class RelayTools {
             // ---- admin ----
             relay(
                     "player_ban",
-                    Role.ADMIN,
                     true,
                     true,
                     false,
@@ -556,7 +537,6 @@ public final class RelayTools {
                     List.of("uuid", "confirm")),
             relay(
                     "player_unban",
-                    Role.ADMIN,
                     true,
                     true,
                     false,
@@ -568,7 +548,6 @@ public final class RelayTools {
                     List.of("uuid", "confirm")),
             relay(
                     "player_whitelist_add",
-                    Role.ADMIN,
                     false,
                     true,
                     false,
@@ -578,7 +557,6 @@ public final class RelayTools {
                     List.of("uuid")),
             relay(
                     "player_whitelist_remove",
-                    Role.ADMIN,
                     true,
                     true,
                     false,
@@ -592,19 +570,17 @@ public final class RelayTools {
             // ---- control ----
             relay(
                     "command_execute",
-                    Role.OPS,
                     true,
                     false,
                     false,
                     true,
-                    "Executes a server console command, gated by the backend's per-role allowlist.",
+                    "Executes a server console command, gated by the backend's restrictions.",
                     Map.of(
                             "command", Schemas.str("Console command to run (no leading slash)"),
                             "confirm", Schemas.confirmSchema()),
                     List.of("command", "confirm")),
             relay(
                     "block_set",
-                    Role.ADMIN,
                     true,
                     false,
                     false,
@@ -620,7 +596,6 @@ public final class RelayTools {
                     List.of("world", "x", "y", "z", "material", "confirm")),
             relay(
                     "server_restart",
-                    Role.ADMIN,
                     true,
                     false,
                     false,
@@ -633,7 +608,6 @@ public final class RelayTools {
                     List.of("confirm")),
             relay(
                     "server_stop",
-                    Role.ADMIN,
                     true,
                     false,
                     false,

@@ -8,7 +8,7 @@ plugins {
 tasks.withType<JavaCompile>().configureEach {
     // Velocity 3.4 + MCP SDK + Jetty 12 all support Java 17; keep bytecode at 17 for
     // maximum proxy compatibility.
-    options.release.set(17)
+    options.release.set(21)
 }
 
 dependencies {

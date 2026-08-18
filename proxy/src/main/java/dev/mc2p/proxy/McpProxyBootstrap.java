@@ -50,8 +50,6 @@ public final class McpProxyBootstrap {
                                         Json.toJson(Map.of(
                                                 "serverId",
                                                 proxyServerId,
-                                                "role",
-                                                "proxy",
                                                 "plugin",
                                                 version,
                                                 "backends",

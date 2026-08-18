@@ -51,7 +51,7 @@ public final class SetupSupport {
     /**
      * The static MCP client config; only {@code <HOST>}, the port, and {@code <TOKEN>}
      * vary. The admin replaces the placeholders with their public host and the token of
-     * the role they grant the agent.
+     * the permissions they grant the agent.
      */
     public static String clientConfigTemplate(int port) {
         Map<String, Object> mcpServers = new LinkedHashMap<>();

@@ -1,0 +1,50 @@
+# MC2P backend plugin configuration.
+#
+# Modes:
+#   auto        - standalone unless this server is configured as a proxy backend
+#                 (spigot.yml settings.bungeecord=true or MC2P_PROXY_SECRET set)
+#   standalone  - serve the MCP endpoint on a single TLS port (default)
+#   backend     - no port; serve the proxy over the mc2p:rpc plugin channel
+
+mode: auto
+
+# Stable id used to identify this server in audit entries and in the proxy's fleet.
+serverId: main
+
+# server-restrictions:
+#  enabled: true
+#  tools:
+#    enabled: true
+#    allowlist:
+#      - block_get
+#      - block_set
+#      - entity_list
+#      - entity_get
+#      - entity_set
+#      - region_get
+#      - player_stats
+#    denylist: []
+#  commands:
+#    enabled: true
+#    allowlist:
+#      - gamemode
+#      - tp
+#      - teleport
+#      - weather
+#      - time
+#      - effect
+#      - clear
+#    denylist:
+#      - stop
+#      - restart
+#      - save-off
+#      - save-all
+#      - kick-all
+#      - op
+#  worlds:
+#    enabled: true
+#    allowlist:
+#      - world
+#      - world_nether
+#      - world_the_end
+#    denylist: []

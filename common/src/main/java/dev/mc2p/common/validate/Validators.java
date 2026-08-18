@@ -5,7 +5,8 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Input validation shared by the standalone MCP server and the backend RPC path.
+ * Input validation shared by the standalone MCP server and the backend RPC
+ * path.
  * Rejection messages are deliberately terse and never echo secrets.
  */
 public final class Validators {
@@ -43,7 +44,10 @@ public final class Validators {
         return value >= -max && value <= max;
     }
 
-    /** Parses "x,y,z" into an int array; returns null on failure or if out of bounds. */
+    /**
+     * Parses "x,y,z" into an int array; returns null on failure or if out of
+     * bounds.
+     */
     public static int[] parseCoordinates(String value, int maxCoord) {
         if (value == null) {
             return null;
@@ -90,7 +94,10 @@ public final class Validators {
         };
     }
 
-    /** Material name must be a bare registry key (namespace:path), alphanumeric + underscore + colon only. */
+    /**
+     * Material name must be a bare registry key (namespace:path), alphanumeric +
+     * underscore + colon only.
+     */
     public static boolean isSafeMaterialName(String value) {
         if (value == null || value.isEmpty() || value.length() > 64) {
             return false;
@@ -127,7 +134,10 @@ public final class Validators {
         return allowedWorlds != null && allowedWorlds.contains(worldKey);
     }
 
-    /** Prevents an ops allowlist from being bypassed by enumeration (e.g. "gamemode:..."). */
+    /**
+     * Prevents an ops allowlist from being bypassed by enumeration (e.g.
+     * "gamemode:...").
+     */
     public static boolean isCommandFirstToken(String command, String entry) {
         if (command == null || entry == null) {
             return false;

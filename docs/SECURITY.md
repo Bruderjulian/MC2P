@@ -8,7 +8,7 @@ trusted on its own, and destructive actions **fail closed**.
 
 Assumed attacker:
 
-- Has access to an MCP client that is authenticated as a low-privilege role (or can
+- Has access to an MCP client that is authenticated with a low-privilege token (or can
   present arbitrary requests to the endpoint).
 - Can send arbitrary HTTP requests to the public MCP port.
 - Can reach the internal network between the proxy and backends **if** they compromise
@@ -19,16 +19,31 @@ The owner is assumed to have limited hosting access: they can open ports in a pa
 may not have root, systemd, console, or file access. Every control point has a
 hosting-friendly fallback (see the spec, section 2.3).
 
-## Role tiers
+## Access model: restrictions, not roles
 
-| Role   | Reach                                                        |
-|--------|--------------------------------------------------------------|
-| reader | Read-only: status, worlds, players, blocks, entities.        |
-| ops    | Player-facing actions + gated `command_execute` allowlist.   |
-| admin  | Everything, including bans, whitelist, `block_set`, restarts.|
+There are no roles. Access is governed by three restriction layers that are **merged,
+most-restrictive wins**:
 
-Roles are cumulative (`admin.can(ops)` is true). Every tool declares a minimum role; the
-transport layer authenticates the caller, and the tool layer **re-checks** the role.
+| Layer                    | Where                                              |
+|--------------------------|----------------------------------------------------|
+| Per-token restrictions   | `tokens.yml` (`restrictions:` block per token)     |
+| Global restrictions      | `config.yml` `global-restrictions:`                |
+| Server restrictions      | `backend.yml` `server-restrictions:`               |
+
+Each layer has three sections — `tools`, `commands`, `worlds` — each with
+`enabled`, an `allowlist`, and a `denylist`:
+
+- **Deny always wins.** If any enabled layer denies an item, it is refused.
+- An item must satisfy **every** enabled layer's non-empty allowlist. Empty allowlists
+  allow everything (except denylists).
+- A disabled section (or a disabled layer) is ignored.
+- `commands` matches the command name (e.g. `gamemode`, `op`; prefix `gamemode*`).
+- A **tool that is never allowed anywhere is not listed** in the MCP tool catalog for
+  that caller — tools are filtered per request by the caller's merged restrictions.
+
+The transport layer authenticates the caller, resolves their merged restrictions, and
+the tool layer **re-checks** them before executing — a bug in one layer cannot bypass
+the other.
 
 ## Defense in depth
 
@@ -36,8 +51,8 @@ transport layer authenticates the caller, and the tool layer **re-checks** the r
    mode generates a keystore; clients must pin the exported cert (never
    `insecureSkipVerify`). Modes: `selfsigned`, `keystore`, `none-behind-proxy`,
    `none` (loud warning, plaintext).
-2. **Named Bearer tokens → name + role** — every key is minted with a name the admin
-   assigns (`/mc2p token create <name> <role>`); the name identifies the caller in the
+2. **Named Bearer tokens → name + restrictions** — every key is minted with a name the
+   admin assigns (`/mc2p token create <name>`); the name identifies the caller in the
    audit log and in backend relays. Tokens are stored as SHA-256 hashes only (never the
    plaintext), compared in constant time. Create/revoke persists across restarts.
 3. **IP allowlist (optional)** — CIDR blocks that may reach the MCP endpoint.
@@ -53,8 +68,9 @@ transport layer authenticates the caller, and the tool layer **re-checks** the r
    over plugin messaging; the proxy re-sends `hello` before every request so the
    handshake is enforced on each call. Requests from unauthenticated senders are
    dropped. The trust window is 5 minutes.
-9. **Command policy** — `command_execute` is gated by per-role allowlists plus a global
-   deny list. Deny always wins, even for admin. Prefix matches via `prefix*`.
+9. **Command policy** — `command_execute` is gated by the merged `commands` restriction
+   (allowlists per layer plus a global deny list). Deny always wins. Prefix matches via
+   `prefix*`.
 10. **Input validation** — world keys, coordinates (clamped), entity types, materials
     (curated allowlist), message/reason lengths, pagination, and command length are all
     validated server-side.
@@ -74,8 +90,8 @@ transport layer authenticates the caller, and the tool layer **re-checks** the r
   (warned against) plaintext in `config.yml`.
 - Never log a token or secret. The audit log stores the first 4 bytes of the SHA-256
   hash as a token id only.
-- `/mc2p setup` auto-generates default-named tokens for any role without one, and
-  `/mc2p token create <name> <role>` mints a named key on demand (256-bit random).
+- `/mc2p setup` auto-generates a default token if none exists, and
+  `/mc2p token create <name>` mints a named key on demand (256-bit random).
   Configs reference the secrets by env var or a 0600 secret file, so the plaintext
   appears only in the one-time setup/create output.
 
@@ -88,18 +104,20 @@ relays again before forwarding them to a backend.
 
 ## `command_execute` policy
 
-- `ops-allowlist`: commands OPS may run (defaults: `gamemode`, `tp`, `teleport`,
-  `weather`, `time`, `effect`, `clear`).
-- `admin-allowlist`: defaults to `*` (everything) — the deny list still applies.
-- `deny`: always denied regardless of allowlist or role (defaults: `stop`, `restart`,
-  `save-off`, `save-all`, `kick-all`, `op`).
+- Each restrictions layer carries a `commands` section: an `allowlist` of command names
+  the token may run and a `denylist` that always wins.
+- A layer whose `commands` section is disabled imposes no command restriction.
+- Empty allowlists allow every command (except denylists).
+- Defaults (config.yml `global-restrictions`): allowlist `gamemode`, `tp`, `teleport`,
+  `weather`, `time`, `effect`, `clear`; denylist `stop`, `restart`, `save-off`,
+  `save-all`, `kick-all`, `op`.
 
 `command_execute` rejects commands containing shell metacharacters and strips the args
 from the audit detail (only the command name is recorded).
 
 ## Proxy (multi-server)
 
-- The proxy re-checks role and re-audits destructive relays before forwarding.
+- The proxy re-checks restrictions and re-audits destructive relays before forwarding.
 - `*` broadcasts are only allowed on read tools.
 - The proxy forwards backend RPC pushes (player join/leave) to connected MCP clients as
   `resources/list-changed` SSE notifications.

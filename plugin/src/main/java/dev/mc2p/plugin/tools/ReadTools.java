@@ -1,6 +1,5 @@
 package dev.mc2p.plugin.tools;
 
-import dev.mc2p.common.role.Role;
 import dev.mc2p.common.validate.Validators;
 import dev.mc2p.plugin.config.BackendConfig;
 import dev.mc2p.plugin.config.BackendConfig.LimitsSection;
@@ -22,7 +21,6 @@ public final class ReadTools {
 
         registry.register(new ToolSpec(
                 "server_status",
-                Role.READER,
                 false,
                 false,
                 "Server health: TPS, tick, uptime, online players, worlds, plugins, heap, restart strategy.",
@@ -31,7 +29,6 @@ public final class ReadTools {
 
         registry.register(new ToolSpec(
                 "world_list",
-                Role.READER,
                 false,
                 false,
                 "Lists worlds with dimension, spawn and loaded-chunk counts.",
@@ -46,7 +43,6 @@ public final class ReadTools {
 
         registry.register(new ToolSpec(
                 "plugin_list",
-                Role.READER,
                 false,
                 false,
                 "Lists loaded plugins with version and enabled state.",
@@ -61,7 +57,6 @@ public final class ReadTools {
 
         registry.register(new ToolSpec(
                 "player_list",
-                Role.READER,
                 false,
                 false,
                 "Lists online players with uuid, name, ping, gamemode, health, food, level and location.",
@@ -76,7 +71,6 @@ public final class ReadTools {
 
         registry.register(new ToolSpec(
                 "player_info",
-                Role.READER,
                 false,
                 false,
                 "Detailed info for one player by UUID: effects, dimension, operator status.",
@@ -85,21 +79,14 @@ public final class ReadTools {
 
         registry.register(new ToolSpec(
                 "player_stats",
-                Role.READER,
                 false,
                 false,
                 "Bukkit statistics snapshot for one player by UUID.",
                 Schemas.object(Map.of("uuid", Schemas.str("Player UUID")), List.of("uuid")),
-                (args, auth) -> {
-                    if (!config.features().stats()) {
-                        throw new ToolException("player stats are disabled by configuration (features.stats)");
-                    }
-                    return facade.playerStats(Args.uuid(args, "uuid")).toMap();
-                }));
+                (args, auth) -> facade.playerStats(Args.uuid(args, "uuid")).toMap()));
 
         registry.register(new ToolSpec(
                 "block_get",
-                Role.READER,
                 false,
                 false,
                 "Reads a single block: material, block data, biome, light levels, chunk loaded.",
@@ -111,14 +98,13 @@ public final class ReadTools {
                                 "z", Schemas.integer("Z coordinate")),
                         List.of("world", "x", "y", "z")),
                 (args, auth) -> {
-                    String world = requireWorld(facade, args);
+                    String world = requireWorld(facade, args, auth);
                     int[] xyz = requireCoords(args, limits.maxCoordinate());
                     return facade.blockAt(world, xyz[0], xyz[1], xyz[2]).toMap();
                 }));
 
         registry.register(new ToolSpec(
                 "region_get",
-                Role.READER,
                 false,
                 false,
                 "Bounded block dump for a region (max " + "blocks enforced by configuration).",
@@ -133,7 +119,7 @@ public final class ReadTools {
                                 "z2", Schemas.integer("Max Z")),
                         List.of("world", "x1", "y1", "z1", "x2", "y2", "z2")),
                 (args, auth) -> {
-                    String world = requireWorld(facade, args);
+                    String world = requireWorld(facade, args, auth);
                     int max = limits.maxCoordinate();
                     int x1 = Args.integer(args, "x1", 0);
                     int y1 = Args.integer(args, "y1", 0);
@@ -176,7 +162,6 @@ public final class ReadTools {
 
         registry.register(new ToolSpec(
                 "entity_list",
-                Role.READER,
                 false,
                 false,
                 "Lists entities in a world, optionally filtered by type, paginated.",
@@ -188,7 +173,7 @@ public final class ReadTools {
                                 "page", Schemas.integer("Page number (0-based)")),
                         List.of("world")),
                 (args, auth) -> {
-                    String world = requireWorld(facade, args);
+                    String world = requireWorld(facade, args, auth);
                     String type = Args.string(args, "type");
                     if (type != null && !type.isBlank() && !Validators.isSafeEntityType(type)) {
                         throw new ToolException("invalid entity type");
@@ -215,7 +200,6 @@ public final class ReadTools {
 
         registry.register(new ToolSpec(
                 "entity_info",
-                Role.READER,
                 false,
                 false,
                 "Detailed entity info by UUID: type, position, health, name, vehicle and passengers.",
@@ -223,13 +207,17 @@ public final class ReadTools {
                 (args, auth) -> facade.entityInfo(Args.uuid(args, "uuid")).toMap()));
     }
 
-    private static String requireWorld(ServerFacade facade, Map<String, Object> args) throws ToolException {
+    private static String requireWorld(ServerFacade facade, Map<String, Object> args, AuthContext auth)
+            throws ToolException {
         String world = Args.requiredString(args, "world");
         if (!Validators.isSafeWorldKey(world)) {
             throw new ToolException("invalid world key");
         }
         if (!facade.worldExists(world)) {
             throw new ToolException("unknown world: " + world);
+        }
+        if (!auth.restrictions().isWorldAllowed(world)) {
+            throw new ToolException("world '" + world + "' is not allowed for this token");
         }
         return world;
     }

@@ -1,59 +1,81 @@
 package dev.mc2p.common.tokens;
 
-import dev.mc2p.common.role.Role;
+import dev.mc2p.common.config.ConfigSupport;
+import dev.mc2p.common.config.RestrictionsConfig;
 import dev.mc2p.common.util.Tokens;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.regex.Pattern;
+import org.yaml.snakeyaml.Yaml;
 
 /**
  * Stores named client tokens as SHA-256 hashes only (never the plaintext), resolves
- * presented Bearer tokens to a name + role in constant time, and supports creating and
- * revoking tokens with persistence across restarts.
+ * presented Bearer tokens to a name + per-token {@link RestrictionsConfig}, and supports
+ * creating and revoking tokens with persistence across restarts.
  *
  * <p>
- * A token is identified by the name the admin assigns when generating the key, so each
- * key maps to a name and a role. Multiple tokens per role are allowed; names must be
- * unique. Load order: configured tokens (from env / file / config.yml) are the base;
- * tokens created in-game are persisted to a runtime file and take precedence over a
- * configured token with the same name.
+ * The store is a YAML list ({@code tokens.yml}):
+ *
+ * <pre>
+ * - name: julian
+ *   token: env:MC2P_TOKEN_JULIAN   # env:VAR | file:path | plaintext, or sha256:&lt;hex&gt; for generated tokens
+ *   restrictions:                  # optional per-token restrictions
+ *     tools:
+ *       enabled: true
+ *       allowlist: [block_get]
+ *   disabled: false
+ * </pre>
+ *
+ * The {@code token} value is a secret source spec exactly like {@code auth.tokens[].token}
+ * used to be; generated tokens are persisted as {@code sha256:&lt;hex&gt;} so the plaintext
+ * never touches disk. A legacy runtime file ({@code name: role hex} lines plus an optional
+ * {@code disabled:} list) is still loaded.
  */
 public final class TokenManager {
 
     private static final Pattern NAME_PATTERN = Pattern.compile("[a-zA-Z0-9_-]{1,40}");
+    private static final String HASH_PREFIX = "sha256:";
 
-    public record AuthResult(String name, Role role, String tokenId) {}
+    /** Result of authenticating a presented token. */
+    public record AuthResult(String name, RestrictionsConfig restrictions, String tokenId) {}
 
-    public record TokenInfo(String name, Role role, String tokenId, boolean configured, boolean disabled) {}
+    /** Snapshot entry for status/list commands; {@code disabled} tokens do not authenticate. */
+    public record TokenInfo(String name, RestrictionsConfig restrictions, String tokenId, boolean disabled) {}
 
-    /** A configured token before its secret is resolved: name, role, and secret source. */
-    public record ConfigToken(Role role, String secret) {}
-
-    private final Path runtimeFile;
+    private final Path tokenFile;
+    private final Path baseDir;
     private final Map<String, Entry> entries = new LinkedHashMap<>();
-    private final Map<String, Entry> configuredEntries = new LinkedHashMap<>();
-    private final Map<String, Entry> runtimeEntries = new LinkedHashMap<>();
-    private final Set<String> disabledNames = new LinkedHashSet<>();
 
     private static final class Entry {
         final String name;
-        final Role role;
+        final String spec;
         final byte[] hash;
         final String tokenId;
+        final RestrictionsConfig restrictions;
+        boolean disabled;
 
-        Entry(String name, Role role, byte[] hash) {
+        Entry(String name, String spec, byte[] hash, RestrictionsConfig restrictions, boolean disabled) {
             this.name = name;
-            this.role = role;
+            this.spec = spec;
             this.hash = hash;
             this.tokenId = Tokens.tokenId(hash);
+            this.restrictions = restrictions == null ? RestrictionsConfig.DISABLED : restrictions;
+            this.disabled = disabled;
         }
     }
 
-    public TokenManager(Path runtimeFile) {
-        this.runtimeFile = runtimeFile;
+    /**
+     * @param tokenFile the {@code tokens.yml} path (may not exist yet); null disables persistence
+     * @param baseDir directory relative {@code file:} token sources are resolved against
+     */
+    public TokenManager(Path tokenFile, Path baseDir) {
+        this.tokenFile = tokenFile;
+        this.baseDir = baseDir;
     }
 
     /** True if the name is a valid token name (letters, digits, {@code -} and {@code _}, max 40). */
@@ -61,35 +83,24 @@ public final class TokenManager {
         return name != null && NAME_PATTERN.matcher(name).matches();
     }
 
-    /** Default token name for a role when one is auto-generated. */
-    public static String defaultName(Role role) {
-        return role.name().toLowerCase();
-    }
-
-    /**
-     * Replaces the base (configured) named tokens with the given ones, keeping any runtime
-     * tokens (which take precedence per name).
-     */
-    public void updateFromConfig(Map<String, ConfigToken> configured) {
-        configuredEntries.clear();
-        if (configured != null) {
-            for (Map.Entry<String, ConfigToken> e : configured.entrySet()) {
-                String name = e.getKey();
-                ConfigToken ct = e.getValue();
-                if (name == null
-                        || name.isBlank()
-                        || ct == null
-                        || ct.role() == null
-                        || ct.secret() == null
-                        || ct.secret().isBlank()) {
-                    continue;
-                }
-                Entry entry = new Entry(name, ct.role(), Tokens.sha256(ct.secret()));
-                configuredEntries.put(name, entry);
-            }
+    /** Loads the token store from {@code tokens.yml}; a corrupt file yields an empty store. */
+    public void load() {
+        entries.clear();
+        if (tokenFile == null || !Files.isRegularFile(tokenFile)) {
+            return;
         }
-        loadRuntime();
-        rebuild();
+        try {
+            Object parsed = new Yaml().load(Files.newInputStream(tokenFile));
+            if (parsed instanceof List<?> list) {
+                for (Object item : list) {
+                    addEntry(ConfigSupport.map(item));
+                }
+            } else if (parsed instanceof Map<?, ?> map) {
+                loadLegacy(ConfigSupport.map(map));
+            }
+        } catch (Exception e) {
+            entries.clear();
+        }
     }
 
     /**
@@ -101,191 +112,182 @@ public final class TokenManager {
         }
         byte[] presentedHash = Tokens.sha256(presented);
         for (Entry e : entries.values()) {
-            if (Tokens.constantTimeEquals(e.hash, presentedHash)) {
-                return new AuthResult(e.name, e.role, e.tokenId);
+            if (!e.disabled && Tokens.constantTimeEquals(e.hash, presentedHash)) {
+                return new AuthResult(e.name, e.restrictions, e.tokenId);
             }
         }
         return null;
     }
 
     /**
-     * Creates (or replaces) the runtime token for {@code name}. Returns the new plaintext
-     * token exactly once.
+     * Creates (or replaces) the token for {@code name} without per-token restrictions and
+     * returns the new plaintext exactly once.
      */
-    public String create(String name, Role role) {
-        if (!isValidName(name)) {
-            throw new IllegalArgumentException("invalid token name: " + name);
-        }
-        if (role == null) {
-            throw new IllegalArgumentException("token role must not be null");
-        }
-        String token = Tokens.generateToken();
-        Entry entry = new Entry(name, role, Tokens.sha256(token));
-        runtimeEntries.put(name, entry);
-        disabledNames.remove(name);
-        entries.put(name, entry);
-        persistRuntime();
-        return token;
+    public String create(String name) {
+        return create(name, RestrictionsConfig.DISABLED);
     }
 
     /**
-     * Revokes a runtime token. A configured token with the same name, if any, becomes
-     * active again.
+     * Creates (or replaces) the token for {@code name} with the given per-token
+     * restrictions and returns the new plaintext exactly once.
      */
+    public String create(String name, RestrictionsConfig restrictions) {
+        if (!isValidName(name)) {
+            throw new IllegalArgumentException("invalid token name: " + name);
+        }
+        String token = Tokens.generateToken();
+        byte[] hash = Tokens.sha256(token);
+        Entry entry = new Entry(name, HASH_PREFIX + HexFormat.of().formatHex(hash), hash, restrictions, false);
+        entries.put(name, entry);
+        persist();
+        return token;
+    }
+
+    /** Removes the token with the given name entirely. */
     public boolean revoke(String name) {
-        Entry removed = runtimeEntries.remove(name);
+        Entry removed = entries.remove(name);
         if (removed != null) {
-            persistRuntime();
-            rebuild();
+            persist();
         }
         return removed != null;
     }
 
-    /**
-     * Disables the active token with the given name (configured or runtime). Disabled
-     * tokens can no longer authenticate but keep their entry and status.
-     */
+    /** Disables the token with the given name; it stops authenticating but stays listed. */
     public boolean disable(String name) {
-        if (!entries.containsKey(name)) {
+        Entry e = entries.get(name);
+        if (e == null || e.disabled) {
             return false;
         }
-        disabledNames.add(name);
-        rebuild();
-        persistRuntime();
+        e.disabled = true;
+        persist();
         return true;
     }
 
     /** Re-enables a previously disabled token by name. */
     public boolean enable(String name) {
-        if (!disabledNames.remove(name)) {
+        Entry e = entries.get(name);
+        if (e == null || !e.disabled) {
             return false;
         }
-        rebuild();
-        persistRuntime();
+        e.disabled = false;
+        persist();
         return true;
     }
 
-    /** True if any active token carries the given role. */
-    public boolean hasRole(Role role) {
-        for (Entry e : entries.values()) {
-            if (e.role == role) {
-                return true;
-            }
-        }
-        return false;
+    /** Removes every token from the store. Used when the standalone/backend mode changes. */
+    public void clear() {
+        entries.clear();
+        persist();
     }
 
-    /** Returns a snapshot of the currently active tokens keyed by name (for status/audit). */
+    /** Returns a snapshot of the current tokens keyed by name (for status/list). */
     public Map<String, TokenInfo> snapshot() {
         Map<String, TokenInfo> result = new LinkedHashMap<>();
-        for (Entry e : configuredEntries.values()) {
-            result.put(e.name, new TokenInfo(e.name, e.role, e.tokenId, true, disabledNames.contains(e.name)));
-        }
-        for (Entry e : runtimeEntries.values()) {
-            result.put(e.name, new TokenInfo(e.name, e.role, e.tokenId, false, disabledNames.contains(e.name)));
+        for (Entry e : entries.values()) {
+            result.put(e.name, new TokenInfo(e.name, e.restrictions, e.tokenId, e.disabled));
         }
         return result;
     }
 
-    /** Recomputes the active {@code entries} from the source maps, skipping disabled names. */
-    private void rebuild() {
-        entries.clear();
-        for (Entry e : configuredEntries.values()) {
-            if (!disabledNames.contains(e.name)) {
-                entries.put(e.name, e);
-            }
+    private void addEntry(Map<String, Object> row) {
+        String name = ConfigSupport.str(row, "name", "");
+        if (!isValidName(name)) {
+            return;
         }
-        for (Entry e : runtimeEntries.values()) {
-            if (!disabledNames.contains(e.name)) {
-                entries.put(e.name, e);
-            }
+        String spec = ConfigSupport.str(row, "token", "");
+        if (spec.isBlank()) {
+            return;
         }
-        disabledNames.removeIf(n -> !configuredEntries.containsKey(n) && !runtimeEntries.containsKey(n));
+        byte[] hash = resolveHash(spec);
+        if (hash == null) {
+            return;
+        }
+        RestrictionsConfig restrictions = RestrictionsConfig.load(ConfigSupport.map(row.get("restrictions")));
+        boolean disabled = ConfigSupport.bool(row, "disabled", false);
+        entries.put(name, new Entry(name, spec, hash, restrictions, disabled));
     }
 
-    private void persistRuntime() {
-        if (runtimeFile == null) {
+    private byte[] resolveHash(String spec) {
+        String trimmed = spec.trim();
+        if (trimmed.startsWith(HASH_PREFIX)) {
+            String hex = trimmed.substring(HASH_PREFIX.length()).trim();
+            try {
+                return HexFormat.of().parseHex(hex);
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
+        }
+        ConfigSupport.Secret secret = ConfigSupport.resolveSecret(trimmed, baseDir);
+        return secret == null ? null : Tokens.sha256(secret.value());
+    }
+
+    /** Legacy runtime file: {@code name: [role] hex} lines plus an optional {@code disabled:} list. */
+    private void loadLegacy(Map<String, Object> map) {
+        for (Map.Entry<String, Object> e : map.entrySet()) {
+            String name = e.getKey();
+            if ("disabled".equals(name) || !isValidName(name)) {
+                continue;
+            }
+            String value = String.valueOf(e.getValue()).trim();
+            String hex = value;
+            int sp = value.lastIndexOf(' ');
+            if (sp >= 0) {
+                String last = value.substring(sp + 1).trim();
+                if (last.matches("[0-9a-fA-F]+")) {
+                    hex = last;
+                }
+            }
+            try {
+                byte[] hash = HexFormat.of().parseHex(hex);
+                entries.put(name, new Entry(name, HASH_PREFIX + hex, hash, RestrictionsConfig.DISABLED, false));
+            } catch (IllegalArgumentException ignored) {
+                // corrupt entry
+            }
+        }
+        Object disabled = map.get("disabled");
+        if (disabled != null) {
+            for (String n : String.valueOf(disabled).split(",")) {
+                Entry entry = entries.get(n.trim());
+                if (entry != null) {
+                    entry.disabled = true;
+                }
+            }
+        }
+    }
+
+    private void persist() {
+        if (tokenFile == null) {
             return;
         }
         try {
+            if (entries.isEmpty()) {
+                Files.deleteIfExists(tokenFile);
+                return;
+            }
+            List<Map<String, Object>> rows = new ArrayList<>();
+            for (Entry e : entries.values()) {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("name", e.name);
+                row.put("token", e.spec);
+                if (!e.restrictions.equals(RestrictionsConfig.DISABLED)) {
+                    row.put("restrictions", e.restrictions.toMap());
+                }
+                if (e.disabled) {
+                    row.put("disabled", true);
+                }
+                rows.add(row);
+            }
             StringBuilder sb = new StringBuilder("# mc2p tokens - do not share this file\n");
-            for (Map.Entry<String, Entry> e : runtimeEntries.entrySet()) {
-                sb.append(e.getKey())
-                        .append(": ")
-                        .append(e.getValue().role.name().toLowerCase())
-                        .append(' ')
-                        .append(java.util.HexFormat.of().formatHex(e.getValue().hash))
-                        .append('\n');
-            }
-            if (!disabledNames.isEmpty()) {
-                sb.append("disabled: ").append(String.join(",", disabledNames)).append('\n');
-            }
-            java.nio.file.Files.writeString(runtimeFile, sb.toString());
+            sb.append(new Yaml().dump(rows));
+            Files.writeString(tokenFile, sb.toString());
             try {
-                java.nio.file.Files.setPosixFilePermissions(
-                        runtimeFile, java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"));
+                Files.setPosixFilePermissions(
+                        tokenFile, java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"));
             } catch (UnsupportedOperationException ignored) {
                 // non-POSIX filesystem
             }
         } catch (Exception e) {
-            throw new IllegalStateException("Failed to persist tokens to " + runtimeFile, e);
-        }
-    }
-
-    private void loadRuntime() {
-        runtimeEntries.clear();
-        if (runtimeFile == null || !java.nio.file.Files.isRegularFile(runtimeFile)) {
-            return;
-        }
-        try {
-            for (String line : java.nio.file.Files.readAllLines(runtimeFile)) {
-                String trimmed = line.trim();
-                if (trimmed.isEmpty() || trimmed.startsWith("#")) {
-                    continue;
-                }
-                if (trimmed.startsWith("disabled:")) {
-                    String names = trimmed.substring("disabled:".length()).trim();
-                    for (String n : names.split(",")) {
-                        String name = n.trim();
-                        if (isValidName(name)) {
-                            disabledNames.add(name);
-                        }
-                    }
-                    continue;
-                }
-                int idx = trimmed.indexOf(':');
-                if (idx <= 0) {
-                    continue;
-                }
-                String name = trimmed.substring(0, idx).trim();
-                if (!isValidName(name)) {
-                    continue;
-                }
-                String[] parts = trimmed.substring(idx + 1).trim().split("\\s+");
-                if (parts.length == 0 || parts[0].isEmpty()) {
-                    continue;
-                }
-                Role role;
-                String hex;
-                Role explicitRole = Role.fromString(parts[0]);
-                if (explicitRole != null && parts.length >= 2) {
-                    role = explicitRole;
-                    hex = parts[1];
-                } else {
-                    // Legacy format (role: hex) where the token name equals the role name.
-                    role = Role.fromString(name);
-                    hex = parts[0];
-                }
-                if (role == null || hex == null || hex.isEmpty()) {
-                    continue;
-                }
-                byte[] hash = java.util.HexFormat.of().parseHex(hex);
-                runtimeEntries.put(name, new Entry(name, role, hash));
-            }
-        } catch (Exception e) {
-            // Corrupt runtime file must never take the server down; keep only config tokens.
-            runtimeEntries.clear();
-            disabledNames.clear();
+            throw new IllegalStateException("Failed to persist tokens to " + tokenFile, e);
         }
     }
 }

@@ -17,6 +17,8 @@ class HttpEndpointConfigTest {
         assertEquals("selfsigned", config.tlsMode());
         assertEquals("keystore.p12", config.keystore());
         assertEquals("MC2P_PASS", config.passwordEnv());
-        assertEquals(new HttpEndpointConfig("0.0.0.0", 8443, "/mcp", 1_000_000, "selfsigned", "keystore.p12", "MC2P_PASS"), config);
+        assertEquals(
+                new HttpEndpointConfig("0.0.0.0", 8443, "/mcp", 1_000_000, "selfsigned", "keystore.p12", "MC2P_PASS"),
+                config);
     }
 }

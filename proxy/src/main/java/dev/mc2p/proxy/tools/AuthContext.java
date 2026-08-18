@@ -1,9 +1,10 @@
 package dev.mc2p.proxy.tools;
 
-import dev.mc2p.common.role.Role;
+import dev.mc2p.common.config.RestrictionsConfig;
 
 /** Caller identity for proxy tool handlers, derived from the MCP transport context. */
-public record AuthContext(Role role, String name, String tokenId, String remoteIp, String source) {
+public record AuthContext(
+        RestrictionsConfig restrictions, String name, String tokenId, String remoteIp, String source) {
 
     public static AuthContext unauthenticated() {
         return new AuthContext(null, "", "", "", "none");

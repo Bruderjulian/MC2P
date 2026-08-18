@@ -6,10 +6,10 @@ import dev.mc2p.common.activity.ClientActivityTracker;
 import dev.mc2p.common.audit.AuditLogger;
 import dev.mc2p.common.config.ConfigSupport;
 import dev.mc2p.common.http.HttpEndpointConfig;
-import dev.mc2p.common.role.Role;
 import dev.mc2p.common.setup.SetupSupport;
 import dev.mc2p.common.tokens.TokenManager;
 import dev.mc2p.plugin.config.BackendConfig;
+import dev.mc2p.plugin.config.ConfigFiles;
 import dev.mc2p.plugin.facade.PaperServerFacade;
 import dev.mc2p.plugin.http.HealthzServlet;
 import dev.mc2p.plugin.http.McpHttpServer;
@@ -59,8 +59,8 @@ public final class Mc2pPlugin extends JavaPlugin {
     @Override
     public void onEnable() {
         CommandAPI.onEnable();
-        saveDefaultConfig();
         try {
+            ConfigFiles.ensureInitialConfig(this, getDataFolder().toPath());
             applyConfig();
         } catch (RuntimeException e) {
             log.error("MC2P failed to start: {}", e.getMessage(), e);
@@ -84,8 +84,9 @@ public final class Mc2pPlugin extends JavaPlugin {
     public void applyConfig() {
         teardown();
         Path dataDir = getDataFolder().toPath();
-        config = BackendConfig.load(loadConfigYaml());
-        mode = resolveMode(config);
+        Path configFile = ConfigFiles.activeConfigFile(dataDir);
+        config = BackendConfig.load(loadConfigYaml(configFile));
+        mode = resolveMode(config, configFile);
 
         if ("standalone".equals(mode) && !getServer().getOnlineMode()) {
             log.error("MC2P refuses to start in standalone mode: online-mode=false allows name spoofing. "
@@ -94,8 +95,8 @@ public final class Mc2pPlugin extends JavaPlugin {
             return;
         }
 
-        tokens = new TokenManager(dataDir.resolve("tokens.yml"));
-        tokens.updateFromConfig(resolveTokens(config));
+        tokens = new TokenManager(dataDir.resolve("tokens.yml"), dataDir);
+        tokens.load();
         activity = new ClientActivityTracker(
                 java.time.Duration.ofMinutes(config.auth().activityWindowMinutes()));
 
@@ -151,6 +152,7 @@ public final class Mc2pPlugin extends JavaPlugin {
         httpServer = new McpHttpServer(
                 http,
                 tokens,
+                config.effectiveRestrictions(),
                 config.auth().ipAllowlist(),
                 config.auth().rateLimit(),
                 dataDir,
@@ -173,6 +175,7 @@ public final class Mc2pPlugin extends JavaPlugin {
         rpcServer = new BackendRpcServer(
                 this,
                 invoker,
+                config.effectiveRestrictions(),
                 config.serverId(),
                 config.proxy().rpcChannel(),
                 secret,
@@ -207,7 +210,10 @@ public final class Mc2pPlugin extends JavaPlugin {
     }
 
     /** Determines the effective mode: standalone | backend (auto: backend behind a known proxy). */
-    private String resolveMode(BackendConfig config) {
+    private String resolveMode(BackendConfig config, Path configFile) {
+        if (ConfigFiles.BACKEND_FILE.equals(configFile.getFileName().toString())) {
+            return "backend";
+        }
         String configured = config.mode();
         if (!"auto".equals(configured)) {
             return configured;
@@ -244,48 +250,17 @@ public final class Mc2pPlugin extends JavaPlugin {
         return false;
     }
 
-    /** Resolves the configured token sources (env / file / plaintext). */
-    private Map<String, TokenManager.ConfigToken> resolveTokens(BackendConfig config) {
-        Map<String, TokenManager.ConfigToken> result = new java.util.LinkedHashMap<>();
-        for (BackendConfig.AuthSection.NamedToken nt : config.auth().tokens()) {
-            if (nt.name() == null || nt.name().isBlank()) {
-                continue;
-            }
-            if (!TokenManager.isValidName(nt.name())) {
-                log.warn("MC2P: invalid token name '{}' ignored (use letters, digits, - and _, max 40)", nt.name());
-                continue;
-            }
-            if (nt.role() == null) {
-                log.warn("MC2P: unknown role for token '{}'", nt.name());
-                continue;
-            }
-            ConfigSupport.Secret secret =
-                    ConfigSupport.resolveSecret(nt.source(), getDataFolder().toPath());
-            if (secret == null) {
-                log.warn("MC2P: no token configured for '{}' (source {})", nt.name(), nt.source());
-                continue;
-            }
-            if (!secret.fromEnvironment() && "config".equals(secret.source())) {
-                log.warn(
-                        "MC2P: token for '{}' is stored in config.yml as plaintext. "
-                                + "Use env:VAR or file:path instead.",
-                        nt.name());
-            }
-            result.put(nt.name(), new TokenManager.ConfigToken(nt.role(), secret.value()));
-        }
-        return result;
-    }
-
-    private Map<String, Object> loadConfigYaml() {
-        Path configFile = getDataFolder().toPath().resolve("config.yml");
+    private Map<String, Object> loadConfigYaml(Path configFile) {
         try {
             Map<String, Object> parsed = ConfigSupport.loadYaml(configFile);
             if (parsed.isEmpty()) {
-                log.warn("MC2P: config.yml is missing or empty; using defaults. Run /mc2p status to verify.");
+                log.warn(
+                        "MC2P: {} is missing or empty; using defaults. Run /mc2p status to verify.",
+                        configFile.getFileName());
             }
             return parsed;
         } catch (IOException e) {
-            throw new IllegalStateException("cannot read config.yml", e);
+            throw new IllegalStateException("cannot read " + configFile.getFileName(), e);
         }
     }
 
@@ -328,27 +303,15 @@ public final class Mc2pPlugin extends JavaPlugin {
     }
 
     /**
-     * Creates default-named tokens for any role that currently has no active token and
-     * returns the freshly generated plaintexts keyed by name (shown exactly once).
+     * Creates a default-named token if the store has no active tokens and returns the
+     * freshly generated plaintext (shown exactly once).
      */
     public Map<String, String> ensureTokens() {
         Map<String, String> generated = new java.util.LinkedHashMap<>();
-        Map<String, TokenManager.TokenInfo> snapshot = tokens.snapshot();
-        for (Role role : Role.values()) {
-            boolean present = snapshot.values().stream().anyMatch(t -> t.role() == role);
-            if (present) {
-                continue;
-            }
-            String name = TokenManager.defaultName(role);
-            if (snapshot.containsKey(name)) {
-                int i = 2;
-                while (snapshot.containsKey(name + "-" + i)) {
-                    i++;
-                }
-                name = name + "-" + i;
-            }
-            generated.put(name, tokens.create(name, role));
+        if (!tokens.snapshot().isEmpty()) {
+            return generated;
         }
+        generated.put("default", tokens.create("default"));
         return generated;
     }
 

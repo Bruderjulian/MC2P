@@ -19,7 +19,8 @@ class DnsRebindingValidatorTest {
 
     @Test
     void blankOriginAllowed() {
-        assertDoesNotThrow(() -> validator.validateHeaders(Map.of("Origin", List.of(" "), "Host", List.of("localhost"))));
+        assertDoesNotThrow(
+                () -> validator.validateHeaders(Map.of("Origin", List.of(" "), "Host", List.of("localhost"))));
     }
 
     @Test
@@ -33,8 +34,7 @@ class DnsRebindingValidatorTest {
     void blankHostRejected() {
         assertThrows(
                 ServerTransportSecurityException.class,
-                () -> validator.validateHeaders(
-                        Map.of("Origin", List.of("http://localhost"), "Host", List.of(" "))));
+                () -> validator.validateHeaders(Map.of("Origin", List.of("http://localhost"), "Host", List.of(" "))));
     }
 
     @Test

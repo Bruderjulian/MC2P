@@ -2,14 +2,14 @@ package dev.mc2p.plugin.tools;
 
 import dev.mc2p.common.audit.AuditLogger;
 import dev.mc2p.common.json.Json;
-import dev.mc2p.common.role.Role;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import java.util.Map;
 
 /**
  * Enforces the tool-level authorization policy for every invocation, regardless of
- * transport (HTTP bearer or RPC envelope): role >= required, confirm flag for destructive
- * tools, and fail-closed audit before destructive execution.
+ * transport (HTTP bearer or RPC envelope): the caller's effective restrictions must allow
+ * the tool, confirm flag for destructive tools, and fail-closed audit before destructive
+ * execution.
  */
 public final class ToolInvoker {
 
@@ -28,13 +28,11 @@ public final class ToolInvoker {
         if (spec == null) {
             return ToolResult.error("unknown tool: " + toolName);
         }
-        Role role = auth.role();
-        if (role == null) {
+        if (auth == null || auth.restrictions() == null) {
             return ToolResult.error("unauthenticated");
         }
-        if (!role.can(spec.requiredRole())) {
-            return ToolResult.error(
-                    "tool '" + toolName + "' requires role " + spec.requiredRole() + " (client: " + role + ")");
+        if (!auth.restrictions().isToolAllowed(toolName)) {
+            return ToolResult.error("tool '" + toolName + "' is not allowed for this token");
         }
         if (spec.requiresConfirm() && !Boolean.TRUE.equals(args == null ? null : args.get("confirm"))) {
             return ToolResult.error("tool '" + toolName + "' is destructive and requires confirm: true");
@@ -43,7 +41,6 @@ public final class ToolInvoker {
             // Fail closed: the action must not run if it cannot be recorded.
             try {
                 audit.log(
-                        role,
                         auth.name(),
                         auth.tokenId(),
                         serverId,

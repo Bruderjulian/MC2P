@@ -1,6 +1,7 @@
 package dev.mc2p.proxy.http;
 
 import dev.mc2p.common.activity.ClientActivityTracker;
+import dev.mc2p.common.config.RestrictionsConfig;
 import dev.mc2p.common.net.Cidr;
 import dev.mc2p.common.ratelimit.TokenBucketRateLimiter;
 import dev.mc2p.common.tokens.TokenManager;
@@ -20,17 +21,17 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Transport enforcement point for the MCP endpoint: IP allowlist, rate limiting, body-size
- * cap, and Bearer-token authentication (token → role). Runs off the main thread.
+ * cap, and Bearer-token authentication (token → restrictions). Runs off the main thread.
  *
  * <p>
  * On success it stamps the request with the resolved identity attributes, which the
  * {@link McpRequestContextExtractor} turns into the MCP transport context that tool
- * handlers read. This is only the first layer — relay tool handlers re-check roles and
- * the backends re-check every call regardless of transport.
+ * handlers read. This is only the first layer — relay tool handlers re-check the
+ * restrictions and the backends re-check every call regardless of transport.
  */
 public final class AuthFilter implements Filter {
 
-    public static final String ATTR_ROLE = "mc2p.role";
+    public static final String ATTR_RESTRICTIONS = "mc2p.restrictions";
     public static final String ATTR_TOKEN_ID = "mc2p.tokenId";
     public static final String ATTR_REMOTE_IP = "mc2p.remoteIp";
     public static final String ATTR_CLIENT_NAME = "mc2p.clientName";
@@ -38,6 +39,7 @@ public final class AuthFilter implements Filter {
     private static final Logger log = LoggerFactory.getLogger(AuthFilter.class);
 
     private final TokenManager tokens;
+    private final RestrictionsConfig serverRestrictions;
     private final List<Cidr> ipAllowlist;
     private final TokenBucketRateLimiter rateLimiter;
     private final int bodyLimitBytes;
@@ -45,11 +47,13 @@ public final class AuthFilter implements Filter {
 
     public AuthFilter(
             TokenManager tokens,
+            RestrictionsConfig serverRestrictions,
             List<String> ipAllowlist,
             TokenBucketRateLimiter rateLimiter,
             int bodyLimitBytes,
             ClientActivityTracker activity) {
         this.tokens = tokens;
+        this.serverRestrictions = serverRestrictions;
         this.ipAllowlist = Cidr.parseAll(ipAllowlist);
         this.rateLimiter = rateLimiter;
         this.bodyLimitBytes = bodyLimitBytes;
@@ -101,11 +105,12 @@ public final class AuthFilter implements Filter {
             return;
         }
 
-        request.setAttribute(ATTR_ROLE, result.role());
+        RestrictionsConfig effective = serverRestrictions.merge(result.restrictions());
+        request.setAttribute(ATTR_RESTRICTIONS, effective);
         request.setAttribute(ATTR_TOKEN_ID, result.tokenId());
         request.setAttribute(ATTR_REMOTE_IP, remoteIp);
         request.setAttribute(ATTR_CLIENT_NAME, result.name());
-        activity.record(result.name(), result.role(), result.tokenId(), remoteIp);
+        activity.record(result.name(), result.tokenId(), remoteIp);
 
         chain.doFilter(request, response);
     }

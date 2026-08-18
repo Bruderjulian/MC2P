@@ -1,33 +1,50 @@
-# MC2P proxy configuration (Section 5.2 of the spec).
-# Named tokens: each key maps to a name and a role. Secrets come from
-# env:VAR | file:path | plaintext (never plaintext in production).
-# The legacy role->source map (reader/ops/admin) is still accepted.
+# MC2P Proxy configuration file (Velocity).
+#
+# This is the MCP entry point for the whole network in backend topology. The proxy
+# relays tool calls to backends over the mc2p:rpc plugin channel.
+#
+# Access control: "global-restrictions" here apply to every token at the proxy layer.
+# Per-token restrictions in tokens.yml narrow them further (most-restrictive wins).
+# Backend-side restrictions (backend.yml server-restrictions) apply once the call
+# reaches the server, and are merged as well.
+
+# Stable id used to identify this proxy in audit entries.
 serverId: proxy-01
 
+# Optional Velocity server-name -> serverId map. Auto-discovered backends use the
+# Velocity server name as the serverId when not listed here.
+servers: {}
+
 mcp:
+  # The proxy/proxy-IP is the "known host"; with tls.mode=selfsigned agents must trust the
+  # generated CA (see /mc2p and docs/SECURITY.md).
   bind: 0.0.0.0
   port: 8443
   endpoint: /mcp
+  # Maximum accepted HTTP body size (bytes). Prevents oversized requests.
+  body-limit-bytes: 65536
   tls:
-    mode: selfsigned          # selfsigned | keystore | none-behind-proxy | none
+    # selfsigned (default, generates a PKCS12 keystore on first run)
+    # keystore (bring your own keystore; set MC2P_KEYSTORE_PW)
+    # none-behind-proxy (host panel terminates TLS in front of this port)
+    # none (PLAINTEXT - only for local testing)
+    mode: selfsigned
     keystore: keystore.p12
     password-env: MC2P_KEYSTORE_PW
-  body-limit-bytes: 65536
+
+rpc:
+  # Env var holding the shared secret used by the proxy's RPC handshake. Backends must
+  # be configured with the same secret (plugin config.yml: proxy.secret).
+  secret-env: MC2P_PROXY_SECRET
+  # Plugin messaging channel for backend communication.
+  channel: mc2p:rpc
+  # Maximum wait for a backend round trip (ms).
+  timeout-ms: 5000
+  # Maximum chunked-response reassembly size (chunks per response).
+  max-chunks: 8
 
 auth:
-  # Named tokens: each key maps to a name and a role. Secrets come from
-  # env:VAR | file:path | plaintext (warned). Run /mc2p setup to auto-generate
-  # missing tokens, and /mc2p token create <name> <role> to mint new keys.
-  tokens:
-    - name: reader
-      role: reader
-      token: env:MC2P_TOKEN_READER
-    - name: ops
-      role: ops
-      token: env:MC2P_TOKEN_OPS
-    - name: admin
-      role: admin
-      token: env:MC2P_TOKEN_ADMIN
+  # Optional: only allow these CIDR blocks to reach the MCP endpoint (empty = allow all).
   ip-allowlist: []
   rate-limit:
     tokens-per-second: 5
@@ -35,17 +52,35 @@ auth:
   # How long a client stays listed in /mc2p activity after its last request (minutes).
   activity-window-minutes: 5
 
-# Optional Velocity server-name -> serverId map. Auto-discovered backends use the
-# Velocity server name as the serverId when not listed here.
-servers: {}
-
-rpc:
-  secret-env: MC2P_PROXY_SECRET
-  channel: mc2p:rpc
-  timeout-ms: 5000
-  max-chunks: 8
-
 audit:
+  # JSON-lines audit log, append-only, fail-closed for destructive actions.
   file: logs/mcp-proxy-audit.log
   max-mb: 50
   max-files: 5
+
+global-restrictions:
+  enabled: true
+  tools:
+    enabled: true
+    allowlist:
+      - server_status
+      - server_fleet
+      - player_locate
+      - server_command
+      - server_restart
+      - server_stop
+    denylist: []
+  commands:
+    enabled: true
+    allowlist: []
+    denylist:
+      - stop
+      - restart
+      - save-off
+      - save-all
+      - kick-all
+      - op
+  worlds:
+    enabled: false
+    allowlist: []
+    denylist: []

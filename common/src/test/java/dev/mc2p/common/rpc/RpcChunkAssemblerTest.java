@@ -2,13 +2,10 @@ package dev.mc2p.common.rpc;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Base64;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -53,7 +50,8 @@ class RpcChunkAssemblerTest {
         RpcChunkAssembler assembler = new RpcChunkAssembler(3);
         assertTrue(assembler.addChunk(chunk("a", 0, 3, new byte[] {1})).isEmpty());
         RpcChunkAssembler exact = new RpcChunkAssembler(1);
-        assertArrayEquals(new byte[] {9}, exact.addChunk(chunk("b", 0, 1, new byte[] {9})).orElseThrow());
+        assertArrayEquals(
+                new byte[] {9}, exact.addChunk(chunk("b", 0, 1, new byte[] {9})).orElseThrow());
     }
 
     @Test
@@ -61,7 +59,9 @@ class RpcChunkAssemblerTest {
         RpcChunkAssembler assembler = new RpcChunkAssembler();
         assertTrue(assembler.addChunk(chunk("a", 0, 2, new byte[] {1})).isEmpty());
         assertTrue(assembler.addChunk(chunk("a", 4, 5, new byte[] {2})).isEmpty());
-        assertArrayEquals(new byte[] {1, 3}, assembler.addChunk(chunk("a", 1, 2, new byte[] {3})).orElseThrow());
+        assertArrayEquals(
+                new byte[] {1, 3},
+                assembler.addChunk(chunk("a", 1, 2, new byte[] {3})).orElseThrow());
     }
 
     @Test
@@ -97,7 +97,9 @@ class RpcChunkAssemblerTest {
         RpcChunkAssembler assembler = new RpcChunkAssembler();
         assertTrue(assembler.addChunk(chunk("a", 0, 2, new byte[] {1})).isEmpty());
         assertTrue(assembler.addChunk(chunk("a", 0, 2, new byte[] {1})).isEmpty());
-        assertArrayEquals(new byte[] {1, 2}, assembler.addChunk(chunk("a", 1, 2, new byte[] {2})).orElseThrow());
+        assertArrayEquals(
+                new byte[] {1, 2},
+                assembler.addChunk(chunk("a", 1, 2, new byte[] {2})).orElseThrow());
     }
 
     @Test
@@ -122,7 +124,9 @@ class RpcChunkAssemblerTest {
     @Test
     void singleChunkCompletesImmediately() {
         RpcChunkAssembler assembler = new RpcChunkAssembler();
-        assertArrayEquals(new byte[] {7, 8}, assembler.addChunk(chunk("solo", 0, 1, new byte[] {7, 8})).orElseThrow());
+        assertArrayEquals(
+                new byte[] {7, 8},
+                assembler.addChunk(chunk("solo", 0, 1, new byte[] {7, 8})).orElseThrow());
     }
 
     @Test

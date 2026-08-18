@@ -17,7 +17,7 @@ Agent ──HTTPS(1 public port)──▶ Velocity / MC2P proxy plugin
 1. **Proxy**: drop `mc2p-proxy.jar` into `plugins/` on Velocity and start it. Run
    `/mc2p setup`:
 
-   - It generates the `reader`/`ops`/`admin` API tokens (persisted as SHA-256 hashes in
+   - It generates API tokens (persisted as SHA-256 hashes in
      `plugins/mc2p-proxy/tokens.yml`), printing any freshly generated ones exactly once.
    - If no shared proxy secret is configured it generates one and persists it to
      `plugins/mc2p-proxy/proxy-secret` (0600), printing it once.
@@ -36,8 +36,8 @@ Agent ──HTTPS(1 public port)──▶ Velocity / MC2P proxy plugin
    secret is present (env var or file). A backend opens no ports; without the secret it
    refuses to start.
 
-3. **Agent**: point it at `https://<proxy-host>:8443/mcp` with the token of the role you
-   grant. The client config is static except the host, port, and token — copy the
+3. **Agent**: point it at `https://<proxy-host>:8443/mcp` with a valid API token. The
+   client config is static except the host, port, and token — copy the
    `mcpServers.json` template from `/mc2p setup` and fill in those three.
 
 ## Configuration
@@ -50,9 +50,10 @@ mcp:
   endpoint: /mcp
   tls: { mode: selfsigned }
 auth:
-  tokens: { reader: env:MC2P_TOKEN_READER, ops: env:MC2P_TOKEN_OPS, admin: env:MC2P_TOKEN_ADMIN }
   ip-allowlist: []
   rate-limit: { tokens-per-second: 5, burst: 20 }
+global-restrictions:   # optional: proxy-wide default policy for every token
+  enabled: false
 servers:            # optional Velocity server-name → serverId map
   lobby: main-01    # auto-discovered backends use the Velocity name as serverId
   survival: survival-02
@@ -102,7 +103,7 @@ agent resource listings stay fresh without polling.
 
 ## Tuning per backend
 
-Each backend keeps its own `config.yml`: `command_execute` allowlists, coordinate
-limits, `features.blockEdit`, restart strategy, and rate limits. The proxy is a relay —
-it does not widen backend policy. A proxy-authorized admin can only do what each backend
-permits.
+Each backend keeps its own config (`config.yml` or `backend.yml`): `command_execute`
+allow/deny lists, coordinate limits, restart strategy, and rate limits. The proxy is a
+relay — it does not widen backend policy. A proxy-authorized token can only do what each
+backend permits.

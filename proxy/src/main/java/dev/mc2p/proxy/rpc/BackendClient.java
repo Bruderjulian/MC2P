@@ -2,6 +2,7 @@ package dev.mc2p.proxy.rpc;
 
 import com.velocitypowered.api.proxy.messages.ChannelIdentifier;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
+import dev.mc2p.common.config.RestrictionsConfig;
 import dev.mc2p.common.json.Json;
 import dev.mc2p.common.rpc.RpcChunkAssembler;
 import dev.mc2p.common.rpc.RpcMessage;
@@ -99,7 +100,12 @@ public final class BackendClient {
      * @return the {@code resp} message ({@code ok/result|error}), or empty if unreachable
      */
     public Optional<Map<String, Object>> call(
-            String serverId, String method, String role, String client, Map<String, Object> params) {
+            String serverId,
+            String method,
+            String tokenId,
+            RestrictionsConfig restrictions,
+            String client,
+            Map<String, Object> params) {
         Connection conn = connections.get(serverId);
         if (conn == null) {
             return Optional.empty();
@@ -116,7 +122,10 @@ public final class BackendClient {
             if (System.nanoTime() > conn.authenticatedUntil) {
                 send(server, RpcMessage.hello(proxySecret));
             }
-            send(server, RpcMessage.request(id, method, role, client, params));
+            send(
+                    server,
+                    RpcMessage.request(
+                            id, method, client, tokenId, restrictions == null ? null : restrictions.toMap(), params));
             Map<String, Object> response = future.get(timeoutMillis, TimeUnit.MILLISECONDS);
             return response == null ? Optional.empty() : Optional.of(response);
         } catch (TimeoutException e) {

@@ -5,7 +5,7 @@
 An MCP server that gives AI agents safe, audited control of Paper Minecraft servers.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Java](https://img.shields.io/badge/Java-17%2F21-007396.svg)](#requirements)
+[![Java](https://img.shields.io/badge/Java-21-007396.svg)](#requirements)
 [![Paper](https://img.shields.io/badge/Paper-1.20.x%E2%80%931.21.x-e3f2fd.svg)](#requirements)
 [![Velocity](https://img.shields.io/badge/Velocity-3.3%2B-9cf.svg)](#requirements)
 
@@ -17,9 +17,9 @@ standard Model Context Protocol (Streamable HTTP) endpoint that Claude, other MC
 clients, or any agent can call to inspect and operate the server in real time.
 
 Security is the primary design driver. Every control point is layered: TLS with
-certificate pinning, named bearer tokens (each key maps to a name + role), IP
-allowlisting, rate limiting, fail-closed auditing, and a `confirm` gate on every
-destructive action.
+certificate pinning, named bearer tokens (each key maps to a name + per-token
+restrictions), IP allowlisting, rate limiting, fail-closed auditing, and a `confirm`
+gate on every destructive action.
 
 ---
 
@@ -29,12 +29,12 @@ destructive action.
   HTTP on a single TLS port (`/mcp`).
 - **Two topologies from one codebase** — single server, or a multi-server fleet behind a
   Velocity proxy with a single public port.
-- **Read, ops, and admin role tiers** — named tokens per client, cumulative
-  permissions.
+- **Restriction layers instead of roles** — per-token, global, and server restrictions
+  on tools, commands, and worlds, merged most-restrictive-wins.
 - **Live world awareness** — status, worlds, players, blocks, regions, entities, and
   per-player stats.
 - **Safe mutation** — messaging, teleporting, effects, whitelisting, and console
-  commands behind per-role allowlists.
+  commands behind allow/deny lists.
 - **Fail-closed audit log** — every destructive action is recorded *before* it executes;
   if the log can't be written, the action is refused.
 - **`/mc2p` in-game admin console** — setup, status, reload, named token create/revoke/list.
@@ -53,7 +53,7 @@ destructive action.
                        │               └───────────────────┘     │
                        │                     │ tools            │
                        │                     ▼                   │
-                       │              Tool layer (role-checked)  │
+                       │              Tool layer (restriction)     │
                        │                     │                   │
                        │                     ▼                   │
                        │              Audit (fail-closed)        │
@@ -91,7 +91,7 @@ read tools can broadcast across the fleet with `server="*"`. See
 
 | Module   | Description                                                                 |
 |----------|-----------------------------------------------------------------------------|
-| `common` | Shared core: roles, tokens, CIDR, rate limiting, audit, RPC wire format, config, setup. |
+| `common` | Shared core: restrictions, tokens, CIDR, rate limiting, audit, RPC wire format, config, setup. |
 | `plugin` | Paper backend plugin — standalone MCP server or zero-port RPC backend.      |
 | `proxy`  | Velocity proxy plugin — public MCP endpoint, RPC relay, fleet routing.      |
 
@@ -101,7 +101,7 @@ read tools can broadcast across the fleet with `server="*"`. See
 |-------------|------------------------------------------|
 | Paper       | 1.20.x / 1.21.x (plugin bytecode: Java 21) |
 | Velocity    | 3.3+ (multi-server proxy only)           |
-| JDK         | 21 to build; proxy jar targets Java 17   |
+| JDK         | 21 to build; all jars target Java 21    |
 | Gradle      | 9.x                                      |
 
 ## Build
@@ -119,11 +119,11 @@ Artifacts:
 ## Quick start — single server
 
 1. Drop `mc2p-plugin.jar` into `plugins/` and start the server. With `mode: auto` and no
-   proxy secret it runs **standalone** and, if no tokens are configured yet, generates all
-   three on first start (printed to the console exactly once).
+   proxy secret it runs **standalone** and, if no tokens exist yet, generates a `default`
+   token on first start (printed to the console exactly once).
 2. Run `/mc2p setup` — it prints any freshly generated tokens, writes
    `plugins/MC2P/mcpServers.json`, and shows the agent config to paste into your MCP
-   client (fill in `<HOST>` and the token of the role you grant).
+   client (fill in `<HOST>` and a token for the agent).
 3. Open **one** port (8443) on the Paper box.
 4. Point an MCP agent at `https://<host>:8443/mcp` with a bearer token. With the default
    `tls.mode: selfsigned`, export and trust the generated cert — never
@@ -147,9 +147,9 @@ Artifacts:
 
 `/mc2p setup` on either plugin does what the old `deploy` CLI did, from the console:
 
-- **Standalone plugin** — generates any missing `reader`/`ops`/`admin` API tokens (shown
-  once, persisted in `tokens.yml`), writes `plugins/MC2P/mcpServers.json`, and prints the
-  client config with the real port.
+- **Standalone plugin** — generates a missing API token (shown once, persisted in
+  `tokens.yml`), writes `plugins/MC2P/mcpServers.json`, and prints the client config with
+  the real port.
 - **Proxy** — generates missing API tokens, ensures the shared `MC2P_PROXY_SECRET`
   (generated + printed once if unset; persisted in `plugins/mc2p-proxy/proxy-secret`),
   re-activates all backends, and prints the client config.
@@ -174,14 +174,17 @@ the 0600 secret file.
 }
 ```
 
-Use the token for the role you want to grant the agent (`reader` / `ops` / `admin`).
-`/mc2p setup` prints the template with your port already filled in.
+Use a token you minted for the agent (`/mc2p token create <name>`). `/mc2p setup` prints
+the template with your port already filled in.
 
 ## Tools
 
-Roles are cumulative: `admin` can do everything `ops` and `reader` can.
+Tool availability is decided by the caller's merged restrictions (per-token × global ×
+server), not a role. The lists below are the full catalog; an agent only sees the tools
+its restrictions allow. Destructive tools are audited fail-closed and require
+`confirm: true`.
 
-### Read (role: `reader`)
+### Read tools
 
 | Tool              | Description                                                     |
 |-------------------|-----------------------------------------------------------------|
@@ -190,13 +193,13 @@ Roles are cumulative: `admin` can do everything `ops` and `reader` can.
 | `plugin_list`     | Loaded plugins with version and enabled state.                  |
 | `player_list`     | Online players with uuid, name, ping, gamemode, health, location. |
 | `player_info`     | One player by UUID: effects, dimension, operator status.        |
-| `player_stats`    | Bukkit statistics snapshot by UUID (`features.stats`).          |
+| `player_stats`    | Bukkit statistics snapshot by UUID.                             |
 | `block_get`       | Single block: material, block data, biome, light, chunk loaded. |
 | `region_get`      | Bounded block dump (region size capped by config).              |
 | `entity_list`     | Entities in a world, type-filtered and paginated.               |
 | `entity_info`     | One entity by UUID: type, position, health, passengers.         |
 
-### Ops (role: `ops` +)
+### Mutation tools
 
 | Tool                 | Description                                              |
 |----------------------|----------------------------------------------------------|
@@ -205,19 +208,14 @@ Roles are cumulative: `admin` can do everything `ops` and `reader` can.
 | `player_teleport`    | Teleport to coordinates or another player.               |
 | `player_gamemode`    | Set survival/creative/adventure/spectator.               |
 | `player_effect`      | Apply a potion effect with duration and amplifier.       |
-| `command_execute` *  | Run console commands gated by the per-role allowlist.    |
-
-### Admin (role: `admin`)
-
-| Tool                        | Description                                             |
-|-----------------------------|---------------------------------------------------------|
-| `player_ban` *              | Ban a player by UUID.                                   |
-| `player_unban` *            | Unban a player by UUID.                                 |
-| `player_whitelist_add`      | Add a player to the whitelist.                          |
-| `player_whitelist_remove` * | Remove a player from the whitelist.                     |
-| `block_set` *               | Set one block from a curated material allowlist (`features.blockEdit`). |
-| `server_restart` *          | Restart via the configured strategy.                    |
-| `server_stop` *             | Graceful stop.                                          |
+| `player_ban` *       | Ban a player by UUID.                                    |
+| `player_unban` *     | Unban a player by UUID.                                  |
+| `player_whitelist_add`| Add a player to the whitelist.                          |
+| `player_whitelist_remove` * | Remove a player from the whitelist.             |
+| `command_execute` *  | Run console commands gated by the command restriction.   |
+| `block_set` *        | Set one block from a curated material allowlist.         |
+| `server_restart` *   | Restart via the configured strategy.                     |
+| `server_stop` *      | Graceful stop.                                           |
 
 \* Destructive tools are **audited fail-closed** and require `confirm: true` in the
 arguments.
@@ -241,33 +239,32 @@ On the Paper server, with `mc2p.admin`:
 /mc2p status                               view mode, endpoint, tokens, audit log
 /mc2p reload                               reload config.yml
 /mc2p activity                             show clients active in the last N minutes
-/mc2p token create <name> <role>           mint a named token for a role (shown once)
-/mc2p token revoke <name>                  permanently remove a runtime token
-/mc2p token disable <name>                 suspend a token without removing it
-/mc2p token enable <name>                  re-activate a disabled token
-/mc2p token revoke <name>                  revoke a runtime token by name
-/mc2p token list                           list tokens by name, role and token id
+/mc2p token create <name>           mint a named token (shown once)
+/mc2p token revoke <name>           permanently remove a runtime token
+/mc2p token disable <name>          suspend a token without removing it
+/mc2p token enable <name>           re-activate a disabled token
+/mc2p token revoke <name>           revoke a runtime token by name
+/mc2p token list                    list tokens by name, restrictions and token id
 ```
 
 ## Configuration
 
-- `plugin/src/main/resources/config.yml` — backend plugin config (mode, TLS, tokens,
-  rate limits, command allowlists, block editing, audit).
-- `proxy/src/main/resources/config.yml` — proxy config (server map, RPC, audit).
+- `plugin/src/main/resources/config.yml` — backend plugin config (mode, TLS, restrictions,
+  rate limits, command allow/deny, audit); `backend.yml` is the backend-mode variant.
+- `proxy/src/main/resources/config.yml` — proxy config (server map, RPC, restrictions, audit).
 
 `config.yml` is regenerated on first run if missing, and the file your server actually
 uses is the one next to the jar — copy your changes there after editing the template.
 Key sections:
 
-| Section  | What it controls                                                        |
-|----------|------------------------------------------------------------------------|
-| `mcp`    | Bind address, port, endpoint path, body limit, TLS mode.                |
-| `auth`   | Token sources per role (`env:VAR` / `file:path` / plaintext), IP allowlist, rate limit. |
-| `commands` | `command_execute` allowlists per role and the always-on deny list.    |
-| `limits` | Coordinate clamp, max region blocks, entity limit, command length.     |
-| `features` | `blockEdit`, `stats` toggles.                                        |
-| `audit`  | Audit log path, rotation size and count.                               |
-| `restart`| Restart strategy (`auto` / `spigot-restart` / `host-restart` / `disabled`). |
+| Section          | What it controls                                                        |
+|------------------|------------------------------------------------------------------------|
+| `mcp`            | Bind address, port, endpoint path, body limit, TLS mode.                |
+| `auth`           | IP allowlist, rate limit, activity window. Tokens live in `tokens.yml`. |
+| `global-restrictions` / `server-restrictions` | Per-layer tool/command/world allow & deny lists. |
+| `limits`         | Coordinate clamp, max region blocks, entity limit, command length.     |
+| `audit`          | Audit log path, rotation size and count.                               |
+| `restart`        | Restart strategy (`auto` / `spigot-restart` / `host-restart` / `disabled`). |
 
 TLS modes: `selfsigned` (default, generates a PKCS12 keystore on first run),
 `keystore` (bring your own; set `MC2P_KEYSTORE_PW`), `none-behind-proxy` (host panel
@@ -285,9 +282,9 @@ full threat model and every control point. Highlights:
 - **Fail-closed audit** — destructive actions are logged before they run; audit failure
   means refusal.
 - **`confirm` gate** — every destructive tool additionally requires `confirm: true`.
-- **Command policy** — per-role allowlists plus a global deny list that wins over
-  everything, even admin.
-- **Proxy isolation** — the proxy never widens backend policy; a proxy-authorized admin
+- **Command policy** — `command_execute` is gated by the merged `commands` restriction
+  (allow/deny lists) that wins over everything.
+- **Proxy isolation** — the proxy never widens backend policy; a proxy-authorized token
   can only do what each backend permits.
 
 ## Verification
@@ -302,7 +299,7 @@ MCP conformance can be checked against a running endpoint with the SDK's own
 
 ## Documentation
 
-- [docs/SECURITY.md](docs/SECURITY.md) — threat model, roles, defense in depth, TLS modes, secrets.
+- [docs/SECURITY.md](docs/SECURITY.md) — threat model, restrictions, defense in depth, TLS modes, secrets.
 - [docs/MULTI-SERVER.md](docs/MULTI-SERVER.md) — multi-server topology, routing model, SSE notifications.
 
 ## Contributing

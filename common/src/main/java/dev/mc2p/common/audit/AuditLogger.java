@@ -1,6 +1,5 @@
 package dev.mc2p.common.audit;
 
-import dev.mc2p.common.role.Role;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -50,12 +49,11 @@ public final class AuditLogger {
      *
      * @throws AuditWriteException if the entry cannot be written (fail-closed)
      */
-    public void log(Role role, String clientName, String tokenId, String serverId, String tool, String action) {
-        log(role, clientName, tokenId, serverId, tool, action, "");
+    public void log(String clientName, String tokenId, String serverId, String tool, String action) {
+        log(clientName, tokenId, serverId, tool, action, "");
     }
 
-    public void log(
-            Role role, String clientName, String tokenId, String serverId, String tool, String action, String detail) {
+    public void log(String clientName, String tokenId, String serverId, String tool, String action, String detail) {
         StringBuilder sb = new StringBuilder(256);
         sb.append('{')
                 .append("\"ts\":")
@@ -68,8 +66,6 @@ public final class AuditLogger {
                 .append(quote(action))
                 .append(",\"client\":")
                 .append(quote(clientName == null ? "" : clientName))
-                .append(",\"role\":")
-                .append(quote(role == null ? "none" : role.name().toLowerCase()))
                 .append(",\"tokenId\":")
                 .append(quote(tokenId == null ? "" : tokenId))
                 .append(",\"detail\":")

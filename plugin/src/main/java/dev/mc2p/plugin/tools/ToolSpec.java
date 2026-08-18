@@ -1,16 +1,15 @@
 package dev.mc2p.plugin.tools;
 
-import dev.mc2p.common.role.Role;
 import java.util.Map;
 
 /**
  * Registration metadata for one MCP tool. {@code destructive} tools are audited and fail
  * closed if the audit entry cannot be written; {@code requiresConfirm} tools additionally
- * require {@code confirm: true} in the arguments.
+ * require {@code confirm: true} in the arguments. Access is governed by the caller's
+ * {@link dev.mc2p.common.config.RestrictionsConfig}, not a role.
  */
 public record ToolSpec(
         String name,
-        Role requiredRole,
         boolean destructive,
         boolean requiresConfirm,
         String description,

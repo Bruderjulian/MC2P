@@ -10,8 +10,8 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
-import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import uk.org.webcompere.systemstubs.environment.EnvironmentVariables;
 import uk.org.webcompere.systemstubs.jupiter.SystemStub;
 import uk.org.webcompere.systemstubs.jupiter.SystemStubsExtension;
@@ -58,8 +58,7 @@ class SelfSignedCertTest {
         environment.set(PASSWORD_ENV, "   ");
         Path keystore = tempDir.resolve("k.p12");
         Files.writeString(keystore, "existing");
-        assertThrows(
-                IllegalStateException.class, () -> SelfSignedCert.ensureKeystore(keystore, PASSWORD_ENV, "srv"));
+        assertThrows(IllegalStateException.class, () -> SelfSignedCert.ensureKeystore(keystore, PASSWORD_ENV, "srv"));
     }
 
     @Test

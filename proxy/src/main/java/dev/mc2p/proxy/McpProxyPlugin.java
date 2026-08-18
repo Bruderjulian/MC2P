@@ -16,7 +16,6 @@ import dev.mc2p.common.activity.ClientActivityTracker;
 import dev.mc2p.common.audit.AuditLogger;
 import dev.mc2p.common.config.ConfigSupport;
 import dev.mc2p.common.http.HttpEndpointConfig;
-import dev.mc2p.common.role.Role;
 import dev.mc2p.common.setup.SetupSupport;
 import dev.mc2p.common.tokens.TokenManager;
 import dev.mc2p.common.util.Tokens;
@@ -106,8 +105,8 @@ public final class McpProxyPlugin {
         teardown();
         config = ProxyConfig.load(loadConfig());
 
-        tokens = new TokenManager(dataDirectory.resolve("tokens.yml"));
-        tokens.updateFromConfig(resolveTokens(config));
+        tokens = new TokenManager(dataDirectory.resolve("tokens.yml"), dataDirectory);
+        tokens.load();
         activity = new ClientActivityTracker(
                 java.time.Duration.ofMinutes(config.auth().activityWindowMinutes()));
 
@@ -162,6 +161,7 @@ public final class McpProxyPlugin {
         httpServer = new McpHttpServer(
                 http,
                 tokens,
+                config.globalRestrictions(),
                 config.auth().ipAllowlist(),
                 config.auth().rateLimit(),
                 dataDirectory,
@@ -241,35 +241,6 @@ public final class McpProxyPlugin {
         }
     }
 
-    private Map<String, TokenManager.ConfigToken> resolveTokens(ProxyConfig config) {
-        Map<String, TokenManager.ConfigToken> result = new java.util.LinkedHashMap<>();
-        for (ProxyConfig.AuthSection.NamedToken nt : config.auth().tokens()) {
-            if (nt.name() == null || nt.name().isBlank()) {
-                continue;
-            }
-            if (!TokenManager.isValidName(nt.name())) {
-                logger.warn("MC2P: invalid token name '{}' ignored (use letters, digits, - and _, max 40)", nt.name());
-                continue;
-            }
-            if (nt.role() == null) {
-                logger.warn("MC2P: unknown role for token '{}'", nt.name());
-                continue;
-            }
-            ConfigSupport.Secret secret = ConfigSupport.resolveSecret(nt.source(), dataDirectory);
-            if (secret == null) {
-                logger.warn("MC2P: no token configured for '{}' (source {})", nt.name(), nt.source());
-                continue;
-            }
-            if (!secret.fromEnvironment() && "config".equals(secret.source())) {
-                logger.warn(
-                        "MC2P: token for '{}' is stored in config.yml as plaintext. Use env:VAR or file:path instead.",
-                        nt.name());
-            }
-            result.put(nt.name(), new TokenManager.ConfigToken(nt.role(), secret.value()));
-        }
-        return result;
-    }
-
     /** Forwards a backend RPC push to connected MCP clients (off the proxy thread). */
     private void notifyClients() {
         McpSyncServer mcp = this.mcpServer;
@@ -316,27 +287,15 @@ public final class McpProxyPlugin {
     }
 
     /**
-     * Creates default-named tokens for any role that currently has no active token and
-     * returns the freshly generated plaintexts keyed by name (shown exactly once).
+     * Creates a default-named token if the store has no active tokens and returns the
+     * freshly generated plaintext (shown exactly once).
      */
     public Map<String, String> ensureTokens() {
         Map<String, String> generated = new java.util.LinkedHashMap<>();
-        Map<String, TokenManager.TokenInfo> snapshot = tokens.snapshot();
-        for (Role role : Role.values()) {
-            boolean present = snapshot.values().stream().anyMatch(t -> t.role() == role);
-            if (present) {
-                continue;
-            }
-            String name = TokenManager.defaultName(role);
-            if (snapshot.containsKey(name)) {
-                int i = 2;
-                while (snapshot.containsKey(name + "-" + i)) {
-                    i++;
-                }
-                name = name + "-" + i;
-            }
-            generated.put(name, tokens.create(name, role));
+        if (!tokens.snapshot().isEmpty()) {
+            return generated;
         }
+        generated.put("default", tokens.create("default"));
         return generated;
     }
 

@@ -10,7 +10,7 @@ class AuthContextTest {
     @Test
     void unauthenticatedIsEmpty() {
         AuthContext context = AuthContext.unauthenticated();
-        assertNull(context.role());
+        assertNull(context.restrictions());
         assertEquals("", context.name());
         assertEquals("", context.tokenId());
         assertEquals("", context.remoteIp());

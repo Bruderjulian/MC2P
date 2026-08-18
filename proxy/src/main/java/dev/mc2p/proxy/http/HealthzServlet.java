@@ -32,8 +32,6 @@ public final class HealthzServlet extends HttpServlet {
                         serverId,
                         "plugin",
                         version,
-                        "role",
-                        "proxy",
                         "restartStrategy",
                         "n/a",
                         "restartAvailable",

@@ -1,6 +1,5 @@
 package dev.mc2p.common.activity;
 
-import dev.mc2p.common.role.Role;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,8 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class ClientActivityTracker {
 
     /** One tracked client's activity summary. */
-    public record Entry(
-            String name, Role role, String tokenId, String remoteIp, long lastSeenMillis, long requestCount) {}
+    public record Entry(String name, String tokenId, String remoteIp, long lastSeenMillis, long requestCount) {}
 
     private final Duration window;
     private final Map<String, Entry> entries = new ConcurrentHashMap<>();
@@ -30,19 +28,13 @@ public final class ClientActivityTracker {
     }
 
     /** Records one authenticated request from the given client. */
-    public void record(String name, Role role, String tokenId, String remoteIp) {
+    public void record(String name, String tokenId, String remoteIp) {
         long now = System.currentTimeMillis();
         entries.compute(
                 name,
                 (k, prev) -> prev == null
-                        ? new Entry(name, role, tokenId, remoteIp, now, 1)
-                        : new Entry(
-                                prev.name(),
-                                prev.role(),
-                                prev.tokenId(),
-                                prev.remoteIp(),
-                                now,
-                                prev.requestCount() + 1));
+                        ? new Entry(name, tokenId, remoteIp, now, 1)
+                        : new Entry(prev.name(), prev.tokenId(), prev.remoteIp(), now, prev.requestCount() + 1));
     }
 
     /** Clients with requests within the activity window, ordered by last seen (most recent first). */
