@@ -8,6 +8,7 @@ plugins {
 dependencies {
     implementation(project(":common"))
 
+    compileOnly("org.slf4j:slf4j-api:2.0.18")
     compileOnly("com.velocitypowered:velocity-api:4.0.0")
     annotationProcessor("com.velocitypowered:velocity-api:4.1.0-SNAPSHOT")
     implementation("dev.jorel:commandapi-velocity-shade:12.0.0")
@@ -17,7 +18,6 @@ dependencies {
     implementation("org.eclipse.jetty.ee10:jetty-ee10-servlet:12.1.12")
     implementation("tools.jackson.core:jackson-databind:3.2.2")
     implementation("org.yaml:snakeyaml:2.6")
-    compileOnly("org.slf4j:slf4j-api:2.0.18")
 }
 
 tasks.withType<ShadowJar>().configureEach {

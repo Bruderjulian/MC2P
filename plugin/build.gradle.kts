@@ -9,6 +9,7 @@ dependencies {
     implementation(project(":common"))
 
     compileOnly("io.papermc.paper:paper-api:26.2.build.112-stable")
+    compileOnly("org.slf4j:slf4j-api:2.0.18")
 
     implementation("dev.jorel:commandapi-paper-shade:12.0.0")
 
@@ -17,7 +18,6 @@ dependencies {
     implementation("org.eclipse.jetty.ee10:jetty-ee10-servlet:12.1.12")
     implementation("tools.jackson.core:jackson-databind:3.2.2")
     implementation("org.yaml:snakeyaml:2.6")
-    compileOnly("org.slf4j:slf4j-api:2.0.18")
 }
 
 tasks.withType<ShadowJar>().configureEach {

@@ -1,4 +1,4 @@
-package dev.mc2p.plugin.http;
+package dev.mc2p.common.http;
 
 import java.nio.file.Files;
 import java.nio.file.Path;

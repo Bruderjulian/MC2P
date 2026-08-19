@@ -1,4 +1,4 @@
-package dev.mc2p.proxy.http;
+package dev.mc2p.common.http;
 
 import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletInputStream;

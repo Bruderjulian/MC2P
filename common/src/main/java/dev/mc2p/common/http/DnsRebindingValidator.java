@@ -1,4 +1,4 @@
-package dev.mc2p.plugin.http;
+package dev.mc2p.common.http;
 
 import io.modelcontextprotocol.server.transport.ServerTransportSecurityException;
 import io.modelcontextprotocol.server.transport.ServerTransportSecurityValidator;

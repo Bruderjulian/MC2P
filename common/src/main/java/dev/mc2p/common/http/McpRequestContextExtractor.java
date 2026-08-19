@@ -1,4 +1,4 @@
-package dev.mc2p.proxy.http;
+package dev.mc2p.common.http;
 
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.server.McpTransportContextExtractor;
@@ -7,7 +7,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Turns the identity attributes stamped by {@link AuthFilter} into the MCP transport
+ * Turns the identity attributes stamped by {@link AuthFilter} into the MCP
+ * transport
  * context that tool handlers read from {@code exchange.transportContext()}.
  */
 public final class McpRequestContextExtractor implements McpTransportContextExtractor<HttpServletRequest> {

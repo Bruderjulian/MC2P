@@ -1,7 +1,7 @@
 package dev.mc2p.plugin.tools;
 
+import dev.mc2p.common.http.McpRequestContextExtractor;
 import dev.mc2p.plugin.facade.ServerFacade;
-import dev.mc2p.plugin.http.McpRequestContextExtractor;
 import dev.mc2p.plugin.thread.MainThread;
 import io.modelcontextprotocol.json.McpJsonDefaults;
 import io.modelcontextprotocol.server.McpServer;
@@ -109,7 +109,7 @@ public final class McpServerBootstrap {
                         .jsonMapper(McpJsonDefaults.getMapper())
                         .mcpEndpoint(endpoint)
                         .contextExtractor(new McpRequestContextExtractor())
-                        .securityValidator(new dev.mc2p.plugin.http.DnsRebindingValidator())
+                        .securityValidator(new dev.mc2p.common.http.DnsRebindingValidator())
                         .keepAliveInterval(java.time.Duration.ofSeconds(30));
         return builder.build();
     }

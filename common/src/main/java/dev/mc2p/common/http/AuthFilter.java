@@ -1,4 +1,4 @@
-package dev.mc2p.plugin.http;
+package dev.mc2p.common.http;
 
 import dev.mc2p.common.activity.ClientActivityTracker;
 import dev.mc2p.common.config.RestrictionsConfig;
@@ -21,18 +21,15 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Transport enforcement point for the MCP endpoint: IP allowlist, rate
- * limiting, body-size
- * cap, and Bearer-token authentication (token → restrictions). Runs off the
- * main thread.
+ * limiting, body-size cap, and Bearer-token authentication (token →
+ * restrictions). Runs off the main thread.
  *
  * <p>
  * On success it stamps the request with the resolved identity attributes, which
- * the
- * {@link McpRequestContextExtractor} turns into the MCP transport context that
- * tool
- * handlers read. This is only the first layer — {@code ToolInvoker} re-checks
- * the
- * restrictions for every call regardless of transport.
+ * the {@link McpRequestContextExtractor} turns into the MCP transport context
+ * that tool handlers read.
+ * This is only the first layer — {@code ToolInvoker} re-checks
+ * the restrictions for every call regardless of transport.
  */
 public final class AuthFilter implements Filter {
 

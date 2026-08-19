@@ -1,8 +1,7 @@
-package dev.mc2p.proxy.http;
+package dev.mc2p.common.http;
 
 import dev.mc2p.common.activity.ClientActivityTracker;
 import dev.mc2p.common.config.RestrictionsConfig;
-import dev.mc2p.common.http.HttpEndpointConfig;
 import dev.mc2p.common.ratelimit.TokenBucketRateLimiter;
 import dev.mc2p.common.tokens.TokenManager;
 import jakarta.servlet.DispatcherType;
@@ -21,8 +20,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Owns the single TLS HTTP port for the proxy topology: the MCP endpoint (auth-gated) and
- * the unauthenticated health endpoint. TLS modes: {@code selfsigned} (default),
+ * Owns the single TLS HTTP port for the standalone topology: the MCP endpoint
+ * (auth-gated)
+ * and the unauthenticated health endpoint. TLS modes: {@code selfsigned}
+ * (default),
  * {@code keystore}, {@code none-behind-proxy}, {@code none} (loud warning).
  */
 public final class McpHttpServer {
@@ -53,8 +54,8 @@ public final class McpHttpServer {
         this.server.setHandler(context);
 
         final TokenBucketRateLimiter rateLimiter = new TokenBucketRateLimiter(rateLimit);
-        final AuthFilter authFilter =
-                new AuthFilter(tokens, serverRestrictions, ipAllowlist, rateLimiter, http.bodyLimitBytes(), activity);
+        final AuthFilter authFilter = new AuthFilter(tokens, serverRestrictions, ipAllowlist, rateLimiter,
+                http.bodyLimitBytes(), activity);
         final FilterHolder filterHolder = new FilterHolder(authFilter);
         context.addFilter(filterHolder, endpoint, EnumSet.of(DispatcherType.REQUEST));
     }
@@ -63,20 +64,19 @@ public final class McpHttpServer {
         final String tlsMode = http.tlsMode();
         final String keystorePath = http.keystore();
         final String keystorePasswordEnv = http.passwordEnv();
-        final boolean ssl =
-                switch (tlsMode) {
-                    case "selfsigned", "keystore" -> true;
-                    case "none-behind-proxy" -> {
-                        log.warn(
-                                "TLS mode 'none-behind-proxy': assuming the host panel terminates TLS in front of this port");
-                        yield false;
-                    }
-                    default -> {
-                        log.warn("!!!!!!!!!! TLS DISABLED (tls.mode=none). The MCP endpoint is served in plaintext. "
-                                + "Use selfsigned or a host proxy in production. !!!!!!!!!!");
-                        yield false;
-                    }
-                };
+        final boolean ssl = switch (tlsMode) {
+            case "selfsigned", "keystore" -> true;
+            case "none-behind-proxy" -> {
+                log.warn(
+                        "TLS mode 'none-behind-proxy': assuming the host panel terminates TLS in front of this port");
+                yield false;
+            }
+            default -> {
+                log.warn("!!!!!!!!!! TLS DISABLED (tls.mode=none). The MCP endpoint is served in plaintext. "
+                        + "Use selfsigned or a host proxy in production. !!!!!!!!!!");
+                yield false;
+            }
+        };
 
         if (!ssl) {
             final ServerConnector plain = new ServerConnector(server);
@@ -131,7 +131,7 @@ public final class McpHttpServer {
         try {
             server.start();
             log.info(
-                    "MC2P proxy MCP endpoint listening on {}:{} (TLS enabled per config)",
+                    "MC2P MCP endpoint listening on {}:{} (TLS enabled per config)",
                     mcpBind(),
                     server.getURI().getPort());
         } catch (final Exception e) {

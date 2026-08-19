@@ -2,9 +2,9 @@ package dev.mc2p.proxy;
 
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.mc2p.common.audit.AuditLogger;
+import dev.mc2p.common.http.DnsRebindingValidator;
+import dev.mc2p.common.http.McpRequestContextExtractor;
 import dev.mc2p.common.json.Json;
-import dev.mc2p.proxy.http.DnsRebindingValidator;
-import dev.mc2p.proxy.http.McpRequestContextExtractor;
 import dev.mc2p.proxy.rpc.BackendClient;
 import dev.mc2p.proxy.tools.RelayTools;
 import io.modelcontextprotocol.json.McpJsonDefaults;
