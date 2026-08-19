@@ -116,7 +116,7 @@ public final class AuthFilter implements Filter {
         request.setAttribute(ATTR_TOKEN_ID, result.tokenId());
         request.setAttribute(ATTR_REMOTE_IP, remoteIp);
         request.setAttribute(ATTR_CLIENT_NAME, result.name());
-        activity.record(result.name(), result.tokenId(), remoteIp);
+        activity.record(result.tokenId(), result.name(), remoteIp);
 
         chain.doFilter(request, response);
     }

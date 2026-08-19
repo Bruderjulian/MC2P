@@ -20,13 +20,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Transport enforcement point for the MCP endpoint: IP allowlist, rate limiting, body-size
- * cap, and Bearer-token authentication (token → restrictions). Runs off the main thread.
+ * Transport enforcement point for the MCP endpoint: IP allowlist, rate
+ * limiting, body-size
+ * cap, and Bearer-token authentication (token → restrictions). Runs off the
+ * main thread.
  *
  * <p>
- * On success it stamps the request with the resolved identity attributes, which the
- * {@link McpRequestContextExtractor} turns into the MCP transport context that tool
- * handlers read. This is only the first layer — relay tool handlers re-check the
+ * On success it stamps the request with the resolved identity attributes, which
+ * the
+ * {@link McpRequestContextExtractor} turns into the MCP transport context that
+ * tool
+ * handlers read. This is only the first layer — relay tool handlers re-check
+ * the
  * restrictions and the backends re-check every call regardless of transport.
  */
 public final class AuthFilter implements Filter {
@@ -61,7 +66,8 @@ public final class AuthFilter implements Filter {
     }
 
     @Override
-    public void doFilter(final ServletRequest servletRequest, final ServletResponse servletResponse, final FilterChain chain)
+    public void doFilter(final ServletRequest servletRequest, final ServletResponse servletResponse,
+            final FilterChain chain)
             throws IOException, ServletException {
         HttpServletRequest request = (HttpServletRequest) servletRequest;
         final HttpServletResponse response = (HttpServletResponse) servletResponse;
@@ -110,12 +116,13 @@ public final class AuthFilter implements Filter {
         request.setAttribute(ATTR_TOKEN_ID, result.tokenId());
         request.setAttribute(ATTR_REMOTE_IP, remoteIp);
         request.setAttribute(ATTR_CLIENT_NAME, result.name());
-        activity.record(result.name(), result.tokenId(), remoteIp);
+        activity.record(result.tokenId(), result.name(), remoteIp);
 
         chain.doFilter(request, response);
     }
 
-    private static void reject(final HttpServletResponse response, final int status, final String body) throws IOException {
+    private static void reject(final HttpServletResponse response, final int status, final String body)
+            throws IOException {
         response.setStatus(status);
         response.setContentType("application/json");
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
