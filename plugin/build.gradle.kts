@@ -6,7 +6,7 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":mc2p-common"))
+    implementation(project(":common"))
 
     compileOnly("io.papermc.paper:paper-api:26.2.build.112-stable")
     compileOnly("org.slf4j:slf4j-api:2.0.18")
@@ -56,4 +56,4 @@ tasks.jar {
     enabled = false
 }
 
-extensions.extraProperties["moduleName"] = "mc2p-plugin"
+extensions.extraProperties["moduleName"] = "plugin"

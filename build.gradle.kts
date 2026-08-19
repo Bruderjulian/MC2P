@@ -19,7 +19,6 @@ subprojects {
 
         withSourcesJar()
     }
-
     
     dependencies {
         testImplementation(platform("org.junit:junit-bom:6.1.3"))
