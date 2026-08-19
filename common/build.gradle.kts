@@ -9,4 +9,4 @@ dependencies {
     implementation("io.modelcontextprotocol.sdk:mcp:2.0.0")
 }
 
-extensions.extraProperties["moduleName"] = "common"
+extensions.extraProperties["moduleName"] = "mc2p-common"

@@ -6,7 +6,7 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":common"))
+    implementation(project(":mc2p-common"))
 
     compileOnly("org.slf4j:slf4j-api:2.0.18")
     compileOnly("com.velocitypowered:velocity-api:4.0.0")
@@ -56,4 +56,4 @@ tasks.jar {
     enabled = false
 }
 
-extensions.extraProperties["moduleName"] = "proxy"
+extensions.extraProperties["moduleName"] = "mc2p-proxy"

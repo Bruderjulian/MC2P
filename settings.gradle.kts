@@ -16,9 +16,13 @@ plugins {
 
 rootProject.name = "mc2p"
 
-include("common")
-include("plugin")
-include("proxy")
+include(":mc2p-common")
+include(":mc2p-plugin")
+include(":mc2p-proxy")
+
+project(":mc2p-common").projectDir = file("common")
+project(":mc2p-plugin").projectDir = file("plugin")
+project(":mc2p-proxy").projectDir = file("proxy")
 
 
 dependencyResolutionManagement {
