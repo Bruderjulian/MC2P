@@ -1,5 +1,6 @@
 package dev.mc2p.plugin.tools;
 
+import dev.mc2p.common.exceptions.ToolException;
 import dev.mc2p.common.validate.Validators;
 import java.util.Map;
 import java.util.UUID;

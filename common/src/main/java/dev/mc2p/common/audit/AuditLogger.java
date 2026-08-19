@@ -6,6 +6,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 
+import dev.mc2p.common.exceptions.AuditWriteException;
+
 /**
  * Append-only JSON-lines audit log with size-based rotation. Destructive
  * actions
@@ -16,13 +18,6 @@ import java.time.Instant;
  * token id.
  */
 public final class AuditLogger {
-
-    /** Thrown when an audit entry cannot be persisted. */
-    public static final class AuditWriteException extends RuntimeException {
-        public AuditWriteException(final String message, final Throwable cause) {
-            super(message, cause);
-        }
-    }
 
     private final Path file;
     private final long maxBytes;
@@ -62,17 +57,17 @@ public final class AuditLogger {
         final StringBuilder sb = new StringBuilder(256);
         sb.append('{')
                 .append("\"ts\":")
-                .append(quote(Instant.now().toString()))
+                .append(Instant.now().toString())
                 .append(",\"serverId\":")
-                .append(quote(serverId))
+                .append(serverId)
                 .append(",\"tool\":")
-                .append(quote(tool))
+                .append(tool)
                 .append(",\"action\":")
-                .append(quote(action))
+                .append(action)
                 .append(",\"client\":")
-                .append(quote(clientName == null ? "" : clientName))
+                .append(clientName == null ? "" : clientName)
                 .append(",\"tokenId\":")
-                .append(quote(tokenId == null ? "" : tokenId))
+                .append(tokenId == null ? "" : tokenId)
                 .append(",\"detail\":")
                 .append(detail == null || detail.isEmpty() ? "{}" : detail)
                 .append("}\n");
@@ -114,30 +109,6 @@ public final class AuditLogger {
         } catch (final Exception e) {
             throw new AuditWriteException("Failed to rotate audit log " + file, e);
         }
-    }
-
-    private static String quote(final String value) {
-        final StringBuilder sb = new StringBuilder(value.length() + 2);
-        sb.append('"');
-        for (int i = 0; i < value.length(); i++) {
-            final char c = value.charAt(i);
-            switch (c) {
-                case '"' -> sb.append("\\\"");
-                case '\\' -> sb.append("\\\\");
-                case '\n' -> sb.append("\\n");
-                case '\r' -> sb.append("\\r");
-                case '\t' -> sb.append("\\t");
-                default -> {
-                    if (c < 0x20) {
-                        sb.append(String.format("\\u%04x", (int) c));
-                    } else {
-                        sb.append(c);
-                    }
-                }
-            }
-        }
-        sb.append('"');
-        return sb.toString();
     }
 
     public static String detail(final CharSequence json) {

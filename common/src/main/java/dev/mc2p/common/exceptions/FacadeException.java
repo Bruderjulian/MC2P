@@ -1,4 +1,4 @@
-package dev.mc2p.plugin.facade;
+package dev.mc2p.common.exceptions;
 
 /** Raised by facade operations when the server-side action fails. */
 public final class FacadeException extends RuntimeException {

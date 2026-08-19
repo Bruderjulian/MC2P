@@ -36,7 +36,7 @@ auth:
   ip-allowlist: []
   rate-limit:
     tokens-per-second: 5
-    burst: 20
+    capacity: 20
   # How long a client stays listed in /mc2p activity after its last request (minutes).
   activity-window-minutes: 5
 

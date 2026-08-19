@@ -10,12 +10,10 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public final class TokenBucketRateLimiter {
 
-    public record Config(double tokensPerSecond, int burst) {
+    public record Config(double tokensPerSecond, int capacity) {
     }
 
     private static final class Bucket {
-        final double rate;
-        final double capacity;
         final AtomicReference<State> state;
 
         static final class State {
@@ -28,22 +26,26 @@ public final class TokenBucketRateLimiter {
             }
         }
 
-        Bucket(final double rate, final double capacity) {
-            this.rate = rate;
-            this.capacity = capacity;
+        Bucket(final int capacity) {
             this.state = new AtomicReference<>(new State(capacity, System.nanoTime()));
         }
     }
 
-    private final Config config;
+    private final double tokensPerSecond;
+    private final int capacity;
     private final ConcurrentHashMap<String, Bucket> buckets = new ConcurrentHashMap<>();
 
     public TokenBucketRateLimiter(final Config config) {
-        this.config = config;
+        this.tokensPerSecond = Math.min(Math.max(config.tokensPerSecond, -1), 1000);
+        this.capacity = Math.min(Math.max(config.capacity, 1), 100000);
     }
 
-    public Config config() {
-        return config;
+    public int capacity() {
+        return capacity;
+    }
+
+    public double tokensPerSecond() {
+        return tokensPerSecond;
     }
 
     /**
@@ -52,14 +54,13 @@ public final class TokenBucketRateLimiter {
      * @return true if allowed, false if rate-limited
      */
     public boolean tryAcquire(final String key) {
-        if (config == null || config.tokensPerSecond() <= 0) {
+        if (tokensPerSecond <= 0) {
             return true;
         }
-        final Bucket bucket = buckets.computeIfAbsent(key, k -> new Bucket(config.tokensPerSecond(), config.burst()));
+        final Bucket bucket = buckets.computeIfAbsent(key, k -> new Bucket(capacity));
         long now = System.nanoTime();
         Bucket.State current = bucket.state.get();
-        double elapsedSec = (now - current.nanos) / 1_000_000_000.0;
-        double refilled = Math.min(bucket.capacity, current.tokens + elapsedSec * bucket.rate);
+        double refilled = calculateRefill(current, now);
         Bucket.State updated = new Bucket.State(refilled - 1.0, now);
         while (true) {
             if (refilled < 1.0) {
@@ -72,10 +73,13 @@ public final class TokenBucketRateLimiter {
             }
             current = bucket.state.get();
             now = System.nanoTime();
-            elapsedSec = (now - current.nanos) / 1_000_000_000.0;
-            refilled = Math.min(bucket.capacity, current.tokens + elapsedSec * bucket.rate);
+            refilled = calculateRefill(current, now);
             updated = new Bucket.State(refilled - 1.0, now);
         }
+    }
+
+    private double calculateRefill(final Bucket.State current, final long now) {
+        return Math.min(capacity, current.tokens + ((now - current.nanos) / 1_000_000_000.0) * tokensPerSecond);
     }
 
     public void clear() {

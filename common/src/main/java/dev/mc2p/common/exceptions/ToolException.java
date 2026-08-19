@@ -1,4 +1,4 @@
-package dev.mc2p.plugin.tools;
+package dev.mc2p.common.exceptions;
 
 import java.util.Map;
 

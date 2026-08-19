@@ -2,6 +2,8 @@ package dev.mc2p.plugin.tools;
 
 import java.util.Map;
 
+import dev.mc2p.common.exceptions.ToolException;
+
 /**
  * Registration metadata for one MCP tool. {@code destructive} tools are audited and fail
  * closed if the audit entry cannot be written; {@code requiresConfirm} tools additionally

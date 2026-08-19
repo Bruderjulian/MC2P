@@ -1,5 +1,6 @@
 package dev.mc2p.plugin.facade;
 
+import dev.mc2p.common.exceptions.FacadeException;
 import dev.mc2p.common.validate.Validators;
 import dev.mc2p.plugin.facade.model.Model.BlockInfo;
 import dev.mc2p.plugin.facade.model.Model.CommandResult;

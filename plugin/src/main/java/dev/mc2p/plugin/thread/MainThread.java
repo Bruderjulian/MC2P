@@ -1,6 +1,5 @@
 package dev.mc2p.plugin.thread;
 
-import dev.mc2p.plugin.facade.FacadeException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
@@ -8,6 +7,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
+
+import dev.mc2p.common.exceptions.FacadeException;
 
 /**
  * Runs Bukkit work on the server main thread and blocks the caller (an
