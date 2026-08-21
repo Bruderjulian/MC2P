@@ -1,4 +1,4 @@
-package dev.mc2p.common.audit;
+package dev.mc2p.common.activity;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -17,7 +17,7 @@ import dev.mc2p.common.exceptions.AuditWriteException;
  * the derived
  * token id.
  */
-public final class AuditLogger {
+public final class ActivityLogger {
 
     private final Path file;
     private final long maxBytes;
@@ -25,7 +25,7 @@ public final class AuditLogger {
     private final Object lock = new Object();
     private long approximateSize;
 
-    public AuditLogger(final Path file, final int maxMb, final int maxFiles) {
+    public ActivityLogger(final Path file, final int maxMb, final int maxFiles) {
         this.file = file;
         this.maxBytes = maxMb * 1024L * 1024L;
         this.maxFiles = Math.max(1, maxFiles);

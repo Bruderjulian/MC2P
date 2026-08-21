@@ -2,8 +2,8 @@ package dev.mc2p.plugin;
 
 import dev.jorel.commandapi.CommandAPI;
 import dev.jorel.commandapi.CommandAPIPaperConfig;
+import dev.mc2p.common.activity.ActivityLogger;
 import dev.mc2p.common.activity.ClientActivityTracker;
-import dev.mc2p.common.audit.AuditLogger;
 import dev.mc2p.common.config.ConfigSupport;
 import dev.mc2p.common.http.HttpEndpointConfig;
 import dev.mc2p.common.http.McpHttpServer;
@@ -43,7 +43,7 @@ public final class Mc2pPlugin extends JavaPlugin {
     private BackendConfig config;
     private TokenManager tokens;
     private ClientActivityTracker activity;
-    private AuditLogger audit;
+    private ActivityLogger audit;
     private MainThread mainThread;
     private PaperServerFacade facade;
     private ToolRegistry registry;
@@ -108,7 +108,7 @@ public final class Mc2pPlugin extends JavaPlugin {
             provisionMissingTokens();
         }
 
-        audit = new AuditLogger(
+        audit = new ActivityLogger(
                 dataDir.resolve(config.audit().file()),
                 config.audit().maxMb(),
                 config.audit().maxFiles());
@@ -296,7 +296,7 @@ public final class Mc2pPlugin extends JavaPlugin {
         return activity;
     }
 
-    public AuditLogger audit() {
+    public ActivityLogger audit() {
         return audit;
     }
 

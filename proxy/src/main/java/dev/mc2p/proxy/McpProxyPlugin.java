@@ -12,8 +12,8 @@ import com.velocitypowered.api.proxy.messages.MinecraftChannelIdentifier;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import dev.jorel.commandapi.CommandAPI;
 import dev.jorel.commandapi.CommandAPIVelocityConfig;
+import dev.mc2p.common.activity.ActivityLogger;
 import dev.mc2p.common.activity.ClientActivityTracker;
-import dev.mc2p.common.audit.AuditLogger;
 import dev.mc2p.common.config.ConfigSupport;
 import dev.mc2p.common.http.HttpEndpointConfig;
 import dev.mc2p.common.http.McpHttpServer;
@@ -57,7 +57,7 @@ public final class McpProxyPlugin {
     private ProxyConfig config;
     private TokenManager tokens;
     private ClientActivityTracker activity;
-    private AuditLogger audit;
+    private ActivityLogger audit;
     private BackendClient backendClient;
     private ChannelIdentifier channel;
     private RpcListener rpcListener;
@@ -117,7 +117,7 @@ public final class McpProxyPlugin {
         tokens.load();
         activity = new ClientActivityTracker(config.auth().activityWindowMinutes());
 
-        audit = new AuditLogger(
+        audit = new ActivityLogger(
                 dataDirectory.resolve(config.audit().file()),
                 config.audit().maxMb(),
                 config.audit().maxFiles());
@@ -286,7 +286,7 @@ public final class McpProxyPlugin {
         return activity;
     }
 
-    public AuditLogger audit() {
+    public ActivityLogger audit() {
         return audit;
     }
 

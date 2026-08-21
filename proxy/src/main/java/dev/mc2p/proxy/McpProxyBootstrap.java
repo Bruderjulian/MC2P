@@ -1,7 +1,8 @@
 package dev.mc2p.proxy;
 
 import com.velocitypowered.api.proxy.ProxyServer;
-import dev.mc2p.common.audit.AuditLogger;
+
+import dev.mc2p.common.activity.ActivityLogger;
 import dev.mc2p.common.http.DnsRebindingValidator;
 import dev.mc2p.common.http.McpRequestContextExtractor;
 import dev.mc2p.common.json.Json;
@@ -35,7 +36,7 @@ public final class McpProxyBootstrap {
         public static McpSyncServer build(
                         final BackendClient client,
                         final ProxyServer proxy,
-                        final AuditLogger audit,
+                        final ActivityLogger audit,
                         final String proxyServerId,
                         final String version,
                         final long startedAtMillis,

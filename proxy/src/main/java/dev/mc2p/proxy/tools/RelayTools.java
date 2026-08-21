@@ -3,7 +3,8 @@ package dev.mc2p.proxy.tools;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.ServerConnection;
-import dev.mc2p.common.audit.AuditLogger;
+
+import dev.mc2p.common.activity.ActivityLogger;
 import dev.mc2p.common.config.RestrictionsConfig;
 import dev.mc2p.common.http.McpRequestContextExtractor;
 import dev.mc2p.common.json.Json;
@@ -67,7 +68,7 @@ public final class RelayTools {
         }
 
         public static List<SyncToolSpecification> build(
-                        final BackendClient client, final AuditLogger audit, final String proxyServerId,
+                        final BackendClient client, final ActivityLogger audit, final String proxyServerId,
                         final ProxyServer proxy) {
                 final List<SyncToolSpecification> specs = new ArrayList<>();
                 for (final ToolDef def : CATALOG) {
@@ -82,7 +83,7 @@ public final class RelayTools {
         }
 
         private static SyncToolSpecification spec(
-                        final ToolDef def, final BackendClient client, final AuditLogger audit,
+                        final ToolDef def, final BackendClient client, final ActivityLogger audit,
                         final String proxyServerId,
                         final ProxyServer proxy) {
                 final McpSchema.Tool tool = McpSchema.Tool.builder(def.name(), buildSchema(def))
@@ -106,7 +107,7 @@ public final class RelayTools {
                         final Map<String, Object> args,
                         final AuthContext auth,
                         final BackendClient client,
-                        final AuditLogger audit,
+                        final ActivityLogger audit,
                         final String proxyServerId,
                         final ProxyServer proxy) {
                 final Map<String, Object> params = args == null ? Map.of() : args;

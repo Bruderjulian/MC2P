@@ -1,4 +1,4 @@
-package dev.mc2p.common.net;
+package dev.mc2p.common.http;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -18,21 +18,6 @@ public final class Cidr {
         this.prefix = prefix;
     }
 
-    public static Cidr parse(final String spec) {
-        final String[] parts = spec.trim().split("/", 2);
-        try {
-            final byte[] addr = InetAddress.getByName(parts[0]).getAddress();
-            final int bits = addr.length * 8;
-            final int prefix = parts.length == 2 ? Integer.parseInt(parts[1]) : bits;
-            if (prefix < 0 || prefix > bits) {
-                throw new IllegalArgumentException("Invalid prefix length in CIDR: " + spec);
-            }
-            return new Cidr(addr, prefix);
-        } catch (final UnknownHostException e) {
-            throw new IllegalArgumentException("Invalid CIDR address: " + spec, e);
-        }
-    }
-
     public boolean contains(final InetAddress address) {
         final byte[] addr = address.getAddress();
         if (addr.length != network.length) {
@@ -50,6 +35,21 @@ public final class Cidr {
             return (addr[fullBytes] & mask) == (network[fullBytes] & mask);
         }
         return true;
+    }
+
+    public static Cidr parse(final String spec) {
+        final String[] parts = spec.trim().split("/", 2);
+        try {
+            final byte[] addr = InetAddress.getByName(parts[0]).getAddress();
+            final int bits = addr.length * 8;
+            final int prefix = parts.length == 2 ? Integer.parseInt(parts[1]) : bits;
+            if (prefix < 0 || prefix > bits) {
+                throw new IllegalArgumentException("Invalid prefix length in CIDR: " + spec);
+            }
+            return new Cidr(addr, prefix);
+        } catch (final UnknownHostException e) {
+            throw new IllegalArgumentException("Invalid CIDR address: " + spec, e);
+        }
     }
 
     public static List<Cidr> parseAll(final List<String> specs) {

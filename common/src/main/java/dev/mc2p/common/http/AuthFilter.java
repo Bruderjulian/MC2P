@@ -2,7 +2,6 @@ package dev.mc2p.common.http;
 
 import dev.mc2p.common.activity.ClientActivityTracker;
 import dev.mc2p.common.config.RestrictionsConfig;
-import dev.mc2p.common.net.Cidr;
 import dev.mc2p.common.ratelimit.TokenBucketRateLimiter;
 import dev.mc2p.common.tokens.TokenManager;
 import jakarta.servlet.Filter;

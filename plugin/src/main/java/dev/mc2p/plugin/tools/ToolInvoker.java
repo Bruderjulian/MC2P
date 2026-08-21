@@ -1,6 +1,6 @@
 package dev.mc2p.plugin.tools;
 
-import dev.mc2p.common.audit.AuditLogger;
+import dev.mc2p.common.activity.ActivityLogger;
 import dev.mc2p.common.exceptions.ToolException;
 import dev.mc2p.common.json.Json;
 import dev.mc2p.common.rpc.AuthContext;
@@ -17,10 +17,10 @@ import java.util.Map;
 public final class ToolInvoker {
 
     private final ToolRegistry registry;
-    private final AuditLogger audit;
+    private final ActivityLogger audit;
     private final String serverId;
 
-    public ToolInvoker(final ToolRegistry registry, final AuditLogger audit, final String serverId) {
+    public ToolInvoker(final ToolRegistry registry, final ActivityLogger audit, final String serverId) {
         this.registry = registry;
         this.audit = audit;
         this.serverId = serverId;
