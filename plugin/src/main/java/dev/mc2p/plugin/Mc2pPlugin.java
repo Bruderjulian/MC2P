@@ -101,8 +101,7 @@ public final class Mc2pPlugin extends JavaPlugin {
 
         tokens = new TokenManager(dataDir.resolve("tokens.yml"), dataDir);
         tokens.load();
-        activity = new ClientActivityTracker(
-                java.time.Duration.ofMinutes(config.auth().activityWindowMinutes()));
+        activity = new ClientActivityTracker(config.auth().activityWindowMinutes());
 
         if ("standalone".equals(mode)) {
             provisionMissingTokens();

@@ -114,8 +114,7 @@ public final class McpProxyPlugin {
 
         tokens = new TokenManager(dataDirectory.resolve("tokens.yml"), dataDirectory);
         tokens.load();
-        activity = new ClientActivityTracker(
-                java.time.Duration.ofMinutes(config.auth().activityWindowMinutes()));
+        activity = new ClientActivityTracker(config.auth().activityWindowMinutes());
 
         audit = new AuditLogger(
                 dataDirectory.resolve(config.audit().file()),

@@ -31,14 +31,14 @@ public final class ClientActivityTracker {
      * @param window how long an entry stays "active" after its last request; a
      *               non-positive duration means entries never expire
      */
-    public ClientActivityTracker(final Duration window) {
-        if (!window.isPositive()) {
+    public ClientActivityTracker(final int window) {
+        if (window < 0) {
             isExpiring = false;
             return;
         }
         isExpiring = true;
         try {
-            this.window = window.abs().toMillis();
+            this.window = Math.abs(window) * 60 * 1000;
         } catch (Exception e) {
             this.window = Duration.ofDays(7).toMillis();
             throw new IllegalArgumentException("Invalid window duration: " + window, e);
