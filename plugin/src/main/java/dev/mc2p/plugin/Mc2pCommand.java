@@ -6,12 +6,13 @@ import dev.jorel.commandapi.executors.CommandArguments;
 import dev.mc2p.common.activity.ClientActivityTracker;
 import dev.mc2p.common.setup.SetupSupport;
 import dev.mc2p.common.tokens.TokenManager;
-import dev.mc2p.common.tokens.TokenManager.TokenInfo;
+import dev.mc2p.common.tokens.TokenManager.Token;
 import dev.mc2p.plugin.config.BackendConfig;
 import dev.mc2p.plugin.config.ConfigFiles;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -118,17 +119,16 @@ public final class Mc2pCommand {
                 }
 
                 sender.sendMessage(PREFIX.append(Component.text("MC2P setup (standalone)")));
-                for (final Map.Entry<String, String> e : plugin.ensureTokens().entrySet()) {
+                for (final Map.Entry<String, Token> e : plugin.ensureTokens().entrySet()) {
                         sender.sendMessage(PREFIX.append(
                                         Component.text("Generated token '" + e.getKey() + "' (shown once):",
                                                         NamedTextColor.GREEN)));
                         sender.sendMessage(Component.text("  " + e.getValue(), NamedTextColor.YELLOW));
                 }
-                for (final Map.Entry<String, TokenInfo> e : plugin.tokens().snapshot().entrySet()) {
-                        final TokenInfo info = e.getValue();
+                for (final Token token : plugin.tokens().snapshotTokens()) {
                         sender.sendMessage(Component.text(
-                                        "  " + info.name() + " token id: " + info.tokenId()
-                                                        + (info.disabled() ? " (disabled)" : ""),
+                                        "  " + token.name() + " token id: " + token.tokenId()
+                                                        + (token.disabled() ? " (disabled)" : ""),
                                         NamedTextColor.GRAY)
                                         .append(Component.text("", NamedTextColor.WHITE)));
                 }
@@ -177,11 +177,10 @@ public final class Mc2pCommand {
                                 .append(Component.text(config.restartStrategy(), NamedTextColor.WHITE)));
                 sender.sendMessage(Component.text("  tools registered: ", NamedTextColor.GRAY)
                                 .append(Component.text(plugin.registry().size(), NamedTextColor.WHITE)));
-                for (final Map.Entry<String, TokenInfo> e : plugin.tokens().snapshot().entrySet()) {
-                        final TokenInfo info = e.getValue();
-                        sender.sendMessage(Component.text("  token " + info.name() + ": ", NamedTextColor.GRAY)
+                for (final Token token : plugin.tokens().snapshotTokens()) {
+                        sender.sendMessage(Component.text("  token " + token.name() + ": ", NamedTextColor.GRAY)
                                         .append(Component.text(
-                                                        info.tokenId() + (info.disabled() ? " (disabled)" : ""),
+                                                        token.tokenId() + (token.disabled() ? " (disabled)" : ""),
                                                         NamedTextColor.WHITE)));
                 }
                 sender.sendMessage(Component.text("  audit log: ", NamedTextColor.GRAY)
@@ -259,13 +258,13 @@ public final class Mc2pCommand {
                                         NamedTextColor.RED)));
                         return;
                 }
-                final String token = plugin.tokens().create(name);
+                final Token token = plugin.tokens().create(name);
                 plugin.audit().log(null, "console", plugin.serverId(), "token", "create",
                                 "{\"name\":\"" + name + "\"}");
                 sender.sendMessage(
                                 PREFIX.append(Component.text("New token '" + name + "', shown once:",
                                                 NamedTextColor.GREEN)));
-                sender.sendMessage(Component.text(token, NamedTextColor.YELLOW));
+                sender.sendMessage(Component.text(token.tokenId(), NamedTextColor.YELLOW));
         }
 
         private void revoke(final CommandSender sender, final String name) {
@@ -311,18 +310,17 @@ public final class Mc2pCommand {
         }
 
         private void list(final CommandSender sender) {
-                final Map<String, TokenInfo> snapshot = plugin.tokens().snapshot();
+                final List<Token> snapshot = plugin.tokens().snapshotTokens();
                 if (snapshot.isEmpty()) {
                         sender.sendMessage(PREFIX.append(
                                         Component.text("No tokens configured. Run /mc2p token create <name>.")));
                         return;
                 }
                 sender.sendMessage(PREFIX.append(Component.text("Tokens:")));
-                for (final Map.Entry<String, TokenInfo> e : snapshot.entrySet()) {
-                        final TokenInfo info = e.getValue();
+                for (final Token token : snapshot) {
                         sender.sendMessage(Component.text(
-                                        "  " + info.name() + " " + info.tokenId()
-                                                        + (info.disabled() ? " (disabled)" : ""),
+                                        "  " + token.name() + " " + token.tokenId()
+                                                        + (token.disabled() ? " (disabled)" : ""),
                                         NamedTextColor.GRAY));
                 }
         }

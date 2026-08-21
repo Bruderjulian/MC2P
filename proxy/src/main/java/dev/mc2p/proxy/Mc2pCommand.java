@@ -7,9 +7,11 @@ import dev.jorel.commandapi.executors.CommandArguments;
 import dev.mc2p.common.activity.ClientActivityTracker;
 import dev.mc2p.common.setup.SetupSupport;
 import dev.mc2p.common.tokens.TokenManager;
-import dev.mc2p.common.tokens.TokenManager.TokenInfo;
+import dev.mc2p.common.tokens.TokenManager.Token;
+
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.List;
 import java.util.Map;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -68,15 +70,14 @@ public final class Mc2pCommand {
         final var config = plugin.config();
         source.sendMessage(Component.text("[MC2P] setup", NamedTextColor.AQUA));
 
-        for (final Map.Entry<String, String> e : plugin.ensureTokens().entrySet()) {
+        for (final Map.Entry<String, Token> e : plugin.ensureTokens().entrySet()) {
             source.sendMessage(
                     Component.text("Generated token '" + e.getKey() + "' (shown once):", NamedTextColor.GREEN));
             source.sendMessage(Component.text("  " + e.getValue(), NamedTextColor.YELLOW));
         }
-        for (final Map.Entry<String, TokenInfo> e : plugin.tokens().snapshot().entrySet()) {
-            final TokenInfo info = e.getValue();
+        for (final Token token : plugin.tokens().snapshotTokens()) {
             source.sendMessage(Component.text(
-                    "  " + info.name() + " token id: " + info.tokenId() + (info.disabled() ? " (disabled)" : "")));
+                    "  " + token.name() + " token id: " + token.tokenId() + (token.disabled() ? " (disabled)" : "")));
         }
 
         String secret = plugin.proxySecret();
@@ -127,10 +128,9 @@ public final class Mc2pCommand {
         source.sendMessage(
                 Component.text("  backends: " + plugin.backendServerIds().size()));
         source.sendMessage(Component.text("  tools registered: " + plugin.toolCount()));
-        for (final Map.Entry<String, TokenInfo> e : plugin.tokens().snapshot().entrySet()) {
-            final TokenInfo info = e.getValue();
+        for (final Token token : plugin.tokens().snapshotTokens()) {
             source.sendMessage(Component.text(
-                    "  token " + info.name() + ": " + info.tokenId() + (info.disabled() ? " (disabled)" : "")));
+                    "  token " + token.name() + ": " + token.tokenId() + (token.disabled() ? " (disabled)" : "")));
         }
         source.sendMessage(Component.text("  audit log: " + config.audit().file()));
     }
@@ -186,10 +186,10 @@ public final class Mc2pCommand {
                     NamedTextColor.RED));
             return;
         }
-        final String token = plugin.tokens().create(name);
+        final Token token = plugin.tokens().create(name);
         plugin.audit().log(null, "console", plugin.serverId(), "token", "create", "{\"name\":\"" + name + "\"}");
         source.sendMessage(Component.text("[MC2P] New token '" + name + "', shown once:", NamedTextColor.GREEN));
-        source.sendMessage(Component.text(token, NamedTextColor.YELLOW));
+        source.sendMessage(Component.text(token.tokenId(), NamedTextColor.YELLOW));
     }
 
     private void revoke(final CommandSource source, final String name) {
@@ -226,16 +226,16 @@ public final class Mc2pCommand {
     }
 
     private void list(final CommandSource source) {
-        final Map<String, TokenInfo> snapshot = plugin.tokens().snapshot();
+        final List<Token> snapshot = plugin.tokens().snapshotTokens();
         if (snapshot.isEmpty()) {
             source.sendMessage(Component.text("[MC2P] No tokens configured. Run /mc2p token create <name>."));
             return;
         }
         source.sendMessage(Component.text("[MC2P] Tokens:", NamedTextColor.AQUA));
-        for (final Map.Entry<String, TokenInfo> e : snapshot.entrySet()) {
-            final TokenInfo info = e.getValue();
+        for (final Token token : snapshot) {
             source.sendMessage(
-                    Component.text("  " + info.name() + " " + info.tokenId() + (info.disabled() ? " (disabled)" : "")));
+                    Component.text(
+                            "  " + token.name() + " " + token.tokenId() + (token.disabled() ? " (disabled)" : "")));
         }
     }
 

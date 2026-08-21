@@ -102,18 +102,18 @@ public final class AuthFilter implements Filter {
             return;
         }
         final String presented = auth.substring(7).trim();
-        final TokenManager.AuthResult result = tokens.authenticate(presented);
-        if (result == null) {
+        final TokenManager.Token token = tokens.authenticate(presented);
+        if (token == null) {
             reject(response, 401, "{\"error\":\"unauthorized\"}");
             return;
         }
 
-        final RestrictionsConfig effective = serverRestrictions.merge(result.restrictions());
+        final RestrictionsConfig effective = serverRestrictions.merge(token.restrictions());
         request.setAttribute(ATTR_RESTRICTIONS, effective);
-        request.setAttribute(ATTR_TOKEN_ID, result.tokenId());
+        request.setAttribute(ATTR_TOKEN_ID, token.tokenId());
         request.setAttribute(ATTR_REMOTE_IP, remoteIp);
-        request.setAttribute(ATTR_CLIENT_NAME, result.name());
-        activity.record(result.tokenId(), result.name(), remoteIp);
+        request.setAttribute(ATTR_CLIENT_NAME, token.name());
+        activity.record(token.tokenId(), token.name(), remoteIp);
 
         chain.doFilter(request, response);
     }

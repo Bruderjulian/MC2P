@@ -3,7 +3,7 @@ package dev.mc2p.plugin.rpc;
 import dev.mc2p.common.config.RestrictionsConfig;
 import dev.mc2p.common.json.Json;
 import dev.mc2p.common.rpc.RpcMessage;
-import dev.mc2p.common.util.Tokens;
+import dev.mc2p.common.tokens.Tokens;
 import dev.mc2p.plugin.tools.AuthContext;
 import dev.mc2p.plugin.tools.ToolInvoker;
 import java.util.Map;

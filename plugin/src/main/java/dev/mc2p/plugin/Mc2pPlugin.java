@@ -9,6 +9,7 @@ import dev.mc2p.common.http.HttpEndpointConfig;
 import dev.mc2p.common.http.McpHttpServer;
 import dev.mc2p.common.setup.SetupSupport;
 import dev.mc2p.common.tokens.TokenManager;
+import dev.mc2p.common.tokens.TokenManager.Token;
 import dev.mc2p.plugin.config.BackendConfig;
 import dev.mc2p.plugin.config.ConfigFiles;
 import dev.mc2p.plugin.facade.PaperServerFacade;
@@ -313,11 +314,10 @@ public final class Mc2pPlugin extends JavaPlugin {
 
     /**
      * Creates a default-named token if the store has no active tokens and returns
-     * the
-     * freshly generated plaintext (shown exactly once).
+     * the freshly generated plaintext (shown exactly once).
      */
-    public Map<String, String> ensureTokens() {
-        final Map<String, String> generated = new java.util.LinkedHashMap<>();
+    public Map<String, Token> ensureTokens() {
+        final Map<String, Token> generated = new java.util.LinkedHashMap<>();
         if (!tokens.snapshot().isEmpty()) {
             return generated;
         }
@@ -329,12 +329,12 @@ public final class Mc2pPlugin extends JavaPlugin {
      * Auto-provisions missing API tokens on first standalone run; logs them once.
      */
     private void provisionMissingTokens() {
-        final Map<String, String> generated = ensureTokens();
+        final Map<String, Token> generated = ensureTokens();
         if (generated.isEmpty()) {
             return;
         }
         log.info("MC2P: no API tokens configured; generated the following (shown once):");
-        for (final Map.Entry<String, String> e : generated.entrySet()) {
+        for (final Map.Entry<String, Token> e : generated.entrySet()) {
             log.info("  {}: {}", e.getKey(), e.getValue());
         }
         log.info("MC2P: run /mc2p setup to print the agent client config for this server.");

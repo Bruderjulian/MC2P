@@ -19,7 +19,8 @@ import dev.mc2p.common.http.HttpEndpointConfig;
 import dev.mc2p.common.http.McpHttpServer;
 import dev.mc2p.common.setup.SetupSupport;
 import dev.mc2p.common.tokens.TokenManager;
-import dev.mc2p.common.util.Tokens;
+import dev.mc2p.common.tokens.TokenManager.Token;
+import dev.mc2p.common.tokens.Tokens;
 import dev.mc2p.proxy.config.ProxyConfig;
 import dev.mc2p.proxy.http.HealthzServlet;
 import dev.mc2p.proxy.rpc.BackendClient;
@@ -302,8 +303,8 @@ public final class McpProxyPlugin {
      * the
      * freshly generated plaintext (shown exactly once).
      */
-    public Map<String, String> ensureTokens() {
-        final Map<String, String> generated = new java.util.LinkedHashMap<>();
+    public Map<String, Token> ensureTokens() {
+        final Map<String, Token> generated = new java.util.LinkedHashMap<>();
         if (!tokens.snapshot().isEmpty()) {
             return generated;
         }

@@ -17,18 +17,23 @@ import org.yaml.snakeyaml.Yaml;
  */
 public final class ConfigSupport {
 
-    public record Secret(String value, String source, boolean fromEnvironment) {
-    }
-
     private ConfigSupport() {
     }
 
+    @SuppressWarnings("unchecked")
     public static Map<String, Object> loadYaml(final Path file) throws IOException {
         if (!Files.isRegularFile(file)) {
             return new LinkedHashMap<>();
         }
         try (InputStream in = Files.newInputStream(file)) {
-            return loadYaml(in);
+            final Object parsed = new Yaml().load(in);
+            if (parsed == null) {
+                return new LinkedHashMap<>();
+            }
+            if (!(parsed instanceof Map)) {
+                throw new IOException("config root must be a mapping");
+            }
+            return (Map<String, Object>) parsed;
         }
     }
 
@@ -44,52 +49,26 @@ public final class ConfigSupport {
         return (Map<String, Object>) parsed;
     }
 
+    public static <T> T loadYaml(final Path file, Class<T> cls, final T def) throws IOException {
+        if (!Files.isRegularFile(file)) {
+            return def;
+        }
+        try (InputStream in = Files.newInputStream(file)) {
+            final Object parsed = new Yaml().load(in);
+            if (parsed == null) {
+                return def;
+            }
+            // check if parsed is an instance of cls
+            if (!cls.isInstance(parsed)) {
+                throw new IOException("config root must be assignable to " + cls.getName());
+            }
+            return cls.cast(parsed);
+        }
+    }
+
     /** Serializes a config map back to YAML text. */
     public static String dumpYaml(final Map<String, Object> config) {
         return new Yaml().dump(config);
-    }
-
-    /**
-     * Resolves a token/secret source spec.
-     *
-     * @param spec    {@code env:VAR}, {@code file:path} (0600), or plaintext
-     * @param baseDir directory relative {@code file:} paths are resolved against
-     * @return the resolved secret, or null if the source is missing
-     */
-    public static Secret resolveSecret(final String spec, final Path baseDir) {
-        if (spec == null || spec.isBlank()) {
-            return null;
-        }
-        final String trimmed = spec.trim();
-        if (trimmed.startsWith("env:")) {
-            final String var = trimmed.substring(4).trim();
-            final String value = System.getenv(var);
-            if (value == null || value.isBlank()) {
-                return null;
-            }
-            return new Secret(value, "env:" + var, true);
-        }
-        if (trimmed.startsWith("file:")) {
-            final String pathSpec = trimmed.substring(5).trim();
-            Path path = Path.of(pathSpec);
-            if (!path.isAbsolute()) {
-                path = baseDir.resolve(pathSpec);
-            }
-            if (!Files.isRegularFile(path)) {
-                return null;
-            }
-            try {
-                final String value = Files.readString(path).trim();
-                if (value.isEmpty()) {
-                    return null;
-                }
-                return new Secret(value, "file:" + path, false);
-            } catch (final IOException e) {
-                return null;
-            }
-        }
-        // Plaintext: allowed but warned by the caller.
-        return new Secret(trimmed, "config", false);
     }
 
     public static Map<String, Object> map(final Object value) {
