@@ -3,6 +3,7 @@ package dev.mc2p.plugin.tools;
 import dev.mc2p.common.exceptions.ToolException;
 import dev.mc2p.common.json.Schemas;
 import dev.mc2p.common.rpc.AuthContext;
+import dev.mc2p.common.validate.Args;
 import dev.mc2p.common.validate.Validators;
 import dev.mc2p.plugin.config.BackendConfig;
 import dev.mc2p.plugin.config.BackendConfig.LimitsSection;
@@ -17,7 +18,8 @@ import java.util.Map;
 /** Registers the read-only tool set. */
 public final class ReadTools {
 
-    private ReadTools() {}
+    private ReadTools() {
+    }
 
     public static void register(final ToolRegistry registry, final ServerFacade facade, final BackendConfig config) {
         final LimitsSection limits = config.limits();
@@ -78,7 +80,7 @@ public final class ReadTools {
                 false,
                 "Detailed info for one player by UUID: effects, dimension, operator status.",
                 Schemas.object(Map.of("uuid", Schemas.str("Player UUID")), List.of("uuid")),
-                (args, auth) -> facade.playerInfo(Args.uuid(args, "uuid")).toMap()));
+                (args, auth) -> facade.playerInfo(Args.requiredUUID(args, "uuid")).toMap()));
 
         registry.register(new ToolSpec(
                 "player_stats",
@@ -86,7 +88,7 @@ public final class ReadTools {
                 false,
                 "Bukkit statistics snapshot for one player by UUID.",
                 Schemas.object(Map.of("uuid", Schemas.str("Player UUID")), List.of("uuid")),
-                (args, auth) -> facade.playerStats(Args.uuid(args, "uuid")).toMap()));
+                (args, auth) -> facade.playerStats(Args.requiredUUID(args, "uuid")).toMap()));
 
         registry.register(new ToolSpec(
                 "block_get",
@@ -130,18 +132,18 @@ public final class ReadTools {
                     final int x2 = Args.integer(args, "x2", 0);
                     final int y2 = Args.integer(args, "y2", 0);
                     final int z2 = Args.integer(args, "z2", 0);
-                    for (final int v : new int[] {x1, y1, z1, x2, y2, z2}) {
+                    for (final int v : new int[] { x1, y1, z1, x2, y2, z2 }) {
                         if (!Validators.isWithinCoordinate(v, max)) {
                             throw new ToolException("coordinate out of bounds (±" + max + ")");
                         }
                     }
                     final int[] region = {
-                        Math.min(x1, x2),
-                        Math.min(y1, y2),
-                        Math.min(z1, z2),
-                        Math.max(x1, x2),
-                        Math.max(y1, y2),
-                        Math.max(z1, z2)
+                            Math.min(x1, x2),
+                            Math.min(y1, y2),
+                            Math.min(z1, z2),
+                            Math.max(x1, x2),
+                            Math.max(y1, y2),
+                            Math.max(z1, z2)
                     };
                     final List<BlockInfo> blocks = facade.region(
                             world,
@@ -177,7 +179,7 @@ public final class ReadTools {
                         List.of("world")),
                 (args, auth) -> {
                     final String world = requireWorld(facade, args, auth);
-                    final String type = Args.string(args, "type");
+                    final String type = Args.string(args, "type", null);
                     if (type != null && !type.isBlank() && !Validators.isSafeEntityType(type)) {
                         throw new ToolException("invalid entity type");
                     }
@@ -207,10 +209,11 @@ public final class ReadTools {
                 false,
                 "Detailed entity info by UUID: type, position, health, name, vehicle and passengers.",
                 Schemas.object(Map.of("uuid", Schemas.str("Entity UUID")), List.of("uuid")),
-                (args, auth) -> facade.entityInfo(Args.uuid(args, "uuid")).toMap()));
+                (args, auth) -> facade.entityInfo(Args.requiredUUID(args, "uuid")).toMap()));
     }
 
-    private static String requireWorld(final ServerFacade facade, final Map<String, Object> args, final AuthContext auth)
+    private static String requireWorld(final ServerFacade facade, final Map<String, Object> args,
+            final AuthContext auth)
             throws ToolException {
         final String world = Args.requiredString(args, "world");
         if (!Validators.isSafeWorldKey(world)) {
@@ -234,6 +237,6 @@ public final class ReadTools {
                 || !Validators.isWithinCoordinate(z, maxCoord)) {
             throw new ToolException("coordinate out of bounds (±" + maxCoord + ")");
         }
-        return new int[] {x, y, z};
+        return new int[] { x, y, z };
     }
 }

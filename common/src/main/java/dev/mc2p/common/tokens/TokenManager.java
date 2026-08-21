@@ -2,6 +2,8 @@ package dev.mc2p.common.tokens;
 
 import dev.mc2p.common.config.ConfigSupport;
 import dev.mc2p.common.config.RestrictionsConfig;
+import dev.mc2p.common.validate.Args;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -134,7 +136,7 @@ public final class TokenManager {
         return;
       }
       for (final Object item : parsed) {
-        addEntry(ConfigSupport.map(item));
+        addEntry(Args.map(item));
       }
     } catch (final Exception e) {
       tokens.clear();
@@ -233,16 +235,16 @@ public final class TokenManager {
   }
 
   private void addEntry(final Map<String, Object> row) {
-    final String name = ConfigSupport.str(row, "name", "");
+    final String name = Args.string(row, "name", "");
     if (!isValidName(name)) {
       return;
     }
-    final Tokens.Secret secret = Tokens.resolveSecret(ConfigSupport.str(row, "token", ""), baseDir);
+    final Tokens.Secret secret = Tokens.resolveSecret(Args.string(row, "token", ""), baseDir);
     if (secret == null) {
       return;
     }
-    final RestrictionsConfig restrictions = RestrictionsConfig.load(ConfigSupport.map(row.get("restrictions")));
-    final boolean disabled = ConfigSupport.bool(row, "disabled", false);
+    final RestrictionsConfig restrictions = RestrictionsConfig.load(Args.map(row.get("restrictions")));
+    final boolean disabled = Args.bool(row, "disabled", false);
     tokens.put(name, new Token(name, secret.tokenId(), secret.raw(), secret.hash(), restrictions, disabled));
   }
 

@@ -1,8 +1,9 @@
 package dev.mc2p.proxy.config;
 
-import dev.mc2p.common.config.ConfigSupport;
 import dev.mc2p.common.config.RestrictionsConfig;
 import dev.mc2p.common.ratelimit.TokenBucketRateLimiter;
+import dev.mc2p.common.validate.Args;
+
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,49 +39,49 @@ public record ProxyConfig(
         }
 
         public static ProxyConfig load(final Map<String, Object> yaml) {
-                final String serverId = ConfigSupport.str(yaml, "serverId", "proxy-01");
+                final String serverId = Args.string(yaml, "serverId", "proxy-01");
 
-                final Map<String, Object> mcp = ConfigSupport.map(yaml.get("mcp"));
-                final Map<String, Object> tls = ConfigSupport.map(mcp.get("tls"));
+                final Map<String, Object> mcp = Args.map(yaml.get("mcp"));
+                final Map<String, Object> tls = Args.map(mcp.get("tls"));
                 final McpSection mcpSection = new McpSection(
-                                ConfigSupport.str(mcp, "bind", "0.0.0.0"),
-                                ConfigSupport.integer(mcp, "port", 8443),
-                                ConfigSupport.str(mcp, "endpoint", "/mcp"),
+                                Args.string(mcp, "bind", "0.0.0.0"),
+                                Args.integer(mcp, "port", 8443),
+                                Args.string(mcp, "endpoint", "/mcp"),
                                 new McpSection.TlsSection(
-                                                ConfigSupport.str(tls, "mode", "selfsigned"),
-                                                ConfigSupport.str(tls, "keystore", "keystore.p12"),
-                                                ConfigSupport.str(tls, "password-env", "MC2P_KEYSTORE_PW")),
-                                ConfigSupport.integer(mcp, "body-limit-bytes", 65536));
+                                                Args.string(tls, "mode", "selfsigned"),
+                                                Args.string(tls, "keystore", "keystore.p12"),
+                                                Args.string(tls, "password-env", "MC2P_KEYSTORE_PW")),
+                                Args.integer(mcp, "body-limit-bytes", 65536));
 
-                final Map<String, Object> auth = ConfigSupport.map(yaml.get("auth"));
-                final Map<String, Object> rate = ConfigSupport.map(auth.get("rate-limit"));
+                final Map<String, Object> auth = Args.map(yaml.get("auth"));
+                final Map<String, Object> rate = Args.map(auth.get("rate-limit"));
                 final AuthSection authSection = new AuthSection(
-                                ConfigSupport.strings(auth, "ip-allowlist"),
+                                Args.strings(auth, "ip-allowlist"),
                                 new TokenBucketRateLimiter.Config(
-                                                (double) ConfigSupport.integer(rate, "tokens-per-second", 5),
-                                                ConfigSupport.integer(rate, "burst", 20)),
-                                ConfigSupport.integer(auth, "activity-window-minutes", 5));
+                                                (double) Args.integer(rate, "tokens-per-second", 5),
+                                                Args.integer(rate, "burst", 20)),
+                                Args.integer(auth, "activity-window-minutes", 5));
 
                 final Map<String, String> servers = new LinkedHashMap<>();
-                for (final Map.Entry<String, Object> e : ConfigSupport.map(yaml.get("servers")).entrySet()) {
+                for (final Map.Entry<String, Object> e : Args.map(yaml.get("servers")).entrySet()) {
                         servers.put(e.getKey(), String.valueOf(e.getValue()));
                 }
 
-                final Map<String, Object> rpc = ConfigSupport.map(yaml.get("rpc"));
+                final Map<String, Object> rpc = Args.map(yaml.get("rpc"));
                 final RpcSection rpcSection = new RpcSection(
-                                ConfigSupport.str(rpc, "secret-env", "MC2P_PROXY_SECRET"),
-                                ConfigSupport.str(rpc, "channel", "mc2p:rpc"),
-                                ConfigSupport.integer(rpc, "timeout-ms", 5000),
-                                ConfigSupport.integer(rpc, "max-chunks", 8));
+                                Args.string(rpc, "secret-env", "MC2P_PROXY_SECRET"),
+                                Args.string(rpc, "channel", "mc2p:rpc"),
+                                Args.integer(rpc, "timeout-ms", 5000),
+                                Args.integer(rpc, "max-chunks", 8));
 
-                final Map<String, Object> audit = ConfigSupport.map(yaml.get("audit"));
+                final Map<String, Object> audit = Args.map(yaml.get("audit"));
                 final AuditSection auditSection = new AuditSection(
-                                ConfigSupport.str(audit, "file", "logs/mcp-proxy-audit.log"),
-                                ConfigSupport.integer(audit, "max-mb", 50),
-                                ConfigSupport.integer(audit, "max-files", 5));
+                                Args.string(audit, "file", "logs/mcp-proxy-audit.log"),
+                                Args.integer(audit, "max-mb", 50),
+                                Args.integer(audit, "max-files", 5));
 
                 final RestrictionsConfig global = RestrictionsConfig
-                                .load(ConfigSupport.map(yaml.get("global-restrictions")));
+                                .load(Args.map(yaml.get("global-restrictions")));
 
                 return new ProxyConfig(serverId, mcpSection, authSection, servers, rpcSection, auditSection, global);
         }

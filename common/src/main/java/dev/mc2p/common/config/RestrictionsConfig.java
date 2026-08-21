@@ -1,5 +1,6 @@
 package dev.mc2p.common.config;
 
+import dev.mc2p.common.validate.Args;
 import dev.mc2p.common.validate.Validators;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -80,9 +81,9 @@ public record RestrictionsConfig(boolean enabled, Section tools, Section command
                 return DISABLED;
             }
             return new Section(
-                    ConfigSupport.bool(yaml, "enabled", false),
-                    ConfigSupport.strings(yaml, "allowlist"),
-                    ConfigSupport.strings(yaml, "denylist"));
+                    Args.bool(yaml, "enabled", false),
+                    Args.strings(yaml, "allowlist"),
+                    Args.strings(yaml, "denylist"));
         }
 
         private static boolean matchesAny(final String value, final List<String> entries) {
@@ -178,10 +179,10 @@ public record RestrictionsConfig(boolean enabled, Section tools, Section command
             return DISABLED;
         }
         return new RestrictionsConfig(
-                ConfigSupport.bool(yaml, "enabled", false),
-                Section.load(ConfigSupport.map(yaml.get(KEY_TOOLS))),
-                Section.load(ConfigSupport.map(yaml.get(KEY_COMMANDS))),
-                Section.load(ConfigSupport.map(yaml.get(KEY_WORLDS))));
+                Args.bool(yaml, "enabled", false),
+                Section.load(Args.map(yaml.get(KEY_TOOLS))),
+                Section.load(Args.map(yaml.get(KEY_COMMANDS))),
+                Section.load(Args.map(yaml.get(KEY_WORLDS))));
     }
 
     private static Section mergeSection(final Section a, final Section b) {

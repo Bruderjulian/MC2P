@@ -3,6 +3,7 @@ package dev.mc2p.plugin.tools;
 import dev.mc2p.common.exceptions.FacadeException;
 import dev.mc2p.common.exceptions.ToolException;
 import dev.mc2p.common.json.Schemas;
+import dev.mc2p.common.validate.Args;
 import dev.mc2p.common.validate.Validators;
 import dev.mc2p.plugin.config.BackendConfig;
 import dev.mc2p.plugin.config.BackendConfig.LimitsSection;
@@ -38,12 +39,12 @@ public final class WriteTools {
                                                                 Schemas.bool("Allow Minecraft formatting codes")),
                                                 List.of("uuid", "text")),
                                 (args, auth) -> {
-                                        final UUID uuid = Args.uuid(args, "uuid");
+                                        final UUID uuid = Args.requiredUUID(args, "uuid");
                                         final String text = Args.requiredString(args, "text");
                                         if (text.length() > 256) {
                                                 throw new ToolException("message too long (max 256)");
                                         }
-                                        facade.messagePlayer(uuid, text, Args.bool(args, "allowFormatting"));
+                                        facade.messagePlayer(uuid, text, Args.bool(args, "allowFormatting", true));
                                         return Map.of("serverId", facade.serverId(), "sent", true);
                                 }));
 
@@ -59,8 +60,8 @@ public final class WriteTools {
                                                                 "confirm", Schemas.confirmSchema()),
                                                 List.of("uuid", "confirm")),
                                 (args, auth) -> {
-                                        final var uuid = Args.uuid(args, "uuid");
-                                        final String reason = Args.string(args, "reason");
+                                        final UUID uuid = Args.requiredUUID(args, "uuid");
+                                        final String reason = Args.string(args, "reason", null);
                                         if (reason != null && !Validators.isSafeReason(reason)) {
                                                 throw new ToolException("reason too long (max 256)");
                                         }
@@ -89,12 +90,12 @@ public final class WriteTools {
                                                                 Schemas.integer("Z coordinate")),
                                                 List.of("uuid")),
                                 (args, auth) -> {
-                                        final var uuid = Args.uuid(args, "uuid");
+                                        final UUID uuid = Args.requiredUUID(args, "uuid");
                                         final UUID target = Args.optionalUuid(args, "targetUuid");
                                         if (target != null) {
                                                 facade.teleport(uuid, target);
                                         }
-                                        final String worldKey = Args.string(args, "world");
+                                        final String worldKey = Args.string(args, "world", null);
                                         if (worldKey == null || !Validators.isSafeWorldKey(worldKey)
                                                         || !facade.worldExists(worldKey)) {
                                                 throw new ToolException("world is required and must exist");
@@ -133,7 +134,7 @@ public final class WriteTools {
                                                                 Schemas.str("survival|creative|adventure|spectator")),
                                                 List.of("uuid", "gamemode")),
                                 (args, auth) -> {
-                                        final var uuid = Args.uuid(args, "uuid");
+                                        final UUID uuid = Args.requiredUUID(args, "uuid");
                                         final String gamemode = Validators
                                                         .normalizeGamemode(Args.requiredString(args, "gamemode"));
                                         if (gamemode == null) {
@@ -161,7 +162,7 @@ public final class WriteTools {
                                                                 Schemas.integer("Amplifier level (0-based)")),
                                                 List.of("uuid", "effect", "durationSeconds")),
                                 (args, auth) -> {
-                                        final var uuid = Args.uuid(args, "uuid");
+                                        final UUID uuid = Args.requiredUUID(args, "uuid");
                                         final String effect = Args.requiredString(args, "effect");
                                         if (!Validators.isSafeEffectName(effect)) {
                                                 throw new ToolException("invalid effect name");
@@ -198,8 +199,8 @@ public final class WriteTools {
                                                                 "confirm", Schemas.confirmSchema()),
                                                 List.of("uuid", "confirm")),
                                 (args, auth) -> {
-                                        final var uuid = Args.uuid(args, "uuid");
-                                        final String reason = Args.string(args, "reason");
+                                        final UUID uuid = Args.requiredUUID(args, "uuid");
+                                        final String reason = Args.string(args, "reason", null);
                                         if (reason != null && !Validators.isSafeReason(reason)) {
                                                 throw new ToolException("reason too long (max 256)");
                                         }
@@ -218,8 +219,7 @@ public final class WriteTools {
                                                                 "confirm", Schemas.confirmSchema()),
                                                 List.of("uuid", "confirm")),
                                 (args, auth) -> {
-                                        final var uuid = Args.uuid(args, "uuid");
-                                        facade.unban(uuid);
+                                        facade.unban(Args.requiredUUID(args, "uuid"));
                                         return Map.of("serverId", facade.serverId(), "unbanned", true);
                                 }));
 
@@ -230,8 +230,7 @@ public final class WriteTools {
                                 "Adds a player to the whitelist by UUID.",
                                 Schemas.object(Map.of("uuid", Schemas.str("Player UUID")), List.of("uuid")),
                                 (args, auth) -> {
-                                        final var uuid = Args.uuid(args, "uuid");
-                                        facade.whitelistAdd(uuid);
+                                        facade.whitelistAdd(Args.requiredUUID(args, "uuid"));
                                         return Map.of("serverId", facade.serverId(), "whitelisted", true);
                                 }));
 
@@ -246,8 +245,7 @@ public final class WriteTools {
                                                                 "confirm", Schemas.confirmSchema()),
                                                 List.of("uuid", "confirm")),
                                 (args, auth) -> {
-                                        final var uuid = Args.uuid(args, "uuid");
-                                        facade.whitelistRemove(uuid);
+                                        facade.whitelistRemove(Args.requiredUUID(args, "uuid"));
                                         return Map.of("serverId", facade.serverId(), "unwhitelisted", true);
                                 }));
 
@@ -341,7 +339,10 @@ public final class WriteTools {
                                         if (!Validators.isWithin(countdown, 1, 300)) {
                                                 throw new ToolException("countdownSeconds must be 1..300");
                                         }
-                                        facade.scheduleRestart(Args.string(args, "announce"), countdown);
+                                        facade.scheduleRestart(
+                                                        Args.string(args, "announce",
+                                                                        "Server is restarting in " + countdown),
+                                                        countdown);
                                         return Map.of("serverId", facade.serverId(), "restarting", true,
                                                         "countdownSeconds", countdown);
                                 }));
@@ -365,7 +366,8 @@ public final class WriteTools {
                                         if (!Validators.isWithin(countdown, 1, 300)) {
                                                 throw new ToolException("countdownSeconds must be 1..300");
                                         }
-                                        facade.scheduleStop(Args.string(args, "announce"), countdown);
+                                        facade.scheduleStop(Args.string(args, "announce",
+                                                        "Server is stopping in " + countdown), countdown);
                                         return Map.of("serverId", facade.serverId(), "stopping", true,
                                                         "countdownSeconds", countdown);
                                 }));
