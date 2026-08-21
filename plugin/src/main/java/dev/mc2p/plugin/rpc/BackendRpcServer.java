@@ -4,7 +4,7 @@ import dev.mc2p.common.config.RestrictionsConfig;
 import dev.mc2p.common.json.Json;
 import dev.mc2p.common.rpc.AuthContext;
 import dev.mc2p.common.rpc.RpcMessage;
-import dev.mc2p.common.tokens.Tokens;
+import dev.mc2p.common.validate.Utils;
 import dev.mc2p.plugin.tools.ToolInvoker;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -94,7 +94,7 @@ public final class BackendRpcServer implements PluginMessageListener {
             send(player, RpcMessage.helloNo("proxy secret not configured on backend"));
             return;
         }
-        if (!Tokens.constantTimeEquals(presented, proxySecret)) {
+        if (!Utils.constantTimeEquals(presented, proxySecret)) {
             log.warn("mc2p:rpc: rejected hello from {}: bad proxy secret", senderName(player));
             send(player, RpcMessage.helloNo("bad proxy secret"));
             return;

@@ -3,6 +3,7 @@ package dev.mc2p.common.tokens;
 import dev.mc2p.common.config.ConfigSupport;
 import dev.mc2p.common.config.RestrictionsConfig;
 import dev.mc2p.common.validate.Args;
+import dev.mc2p.common.validate.Utils;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -62,7 +63,7 @@ public final class TokenManager {
     Token(final String name, final String tokenId, final RestrictionsConfig restrictions,
         final boolean disabled) {
       this.name = name;
-      this.hash = Tokens.sha256(tokenId);
+      this.hash = Utils.sha256(tokenId);
       this.raw = HASH_PREFIX + HexFormat.of().formatHex(this.hash);
       this.tokenId = tokenId;
       this.restrictions = restrictions == null ? RestrictionsConfig.DISABLED : restrictions;
@@ -150,9 +151,9 @@ public final class TokenManager {
     if (presented == null || presented.isBlank()) {
       return null;
     }
-    final byte[] presentedHash = Tokens.sha256(presented);
+    final byte[] presentedHash = Utils.sha256(presented);
     for (final Token token : tokens.values()) {
-      if (!token.disabled && Tokens.constantTimeEquals(token.hash, presentedHash)) {
+      if (!token.disabled && Utils.constantTimeEquals(token.hash, presentedHash)) {
         return token;
       }
     }
@@ -176,7 +177,7 @@ public final class TokenManager {
     if (!isValidName(name)) {
       throw new IllegalArgumentException("invalid token name: " + name);
     }
-    final Token token = new Token(name, Tokens.generateToken(), restrictions, false);
+    final Token token = new Token(name, Utils.generateToken(), restrictions, false);
     tokens.put(name, token);
     persist();
     return token;
@@ -239,7 +240,7 @@ public final class TokenManager {
     if (!isValidName(name)) {
       return;
     }
-    final Tokens.Secret secret = Tokens.resolveSecret(Args.string(row, "token", ""), baseDir);
+    final ConfigSupport.Secret secret = ConfigSupport.resolveSecret(Args.string(row, "token", ""), baseDir);
     if (secret == null) {
       return;
     }

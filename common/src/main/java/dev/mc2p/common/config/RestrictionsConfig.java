@@ -1,7 +1,7 @@
 package dev.mc2p.common.config;
 
 import dev.mc2p.common.validate.Args;
-import dev.mc2p.common.validate.Validators;
+import dev.mc2p.common.validate.Utils;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -139,7 +139,7 @@ public record RestrictionsConfig(boolean enabled, Section tools, Section command
         if (!enabled || command == null || command.isBlank()) {
             return true;
         }
-        return commands.allows(Validators.firstToken(command));
+        return commands.allows(Utils.firstToken(command));
     }
 
     /**

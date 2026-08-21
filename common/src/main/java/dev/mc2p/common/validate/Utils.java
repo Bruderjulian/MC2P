@@ -1,5 +1,9 @@
 package dev.mc2p.common.validate;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
@@ -9,9 +13,10 @@ import java.util.UUID;
  * path.
  * Rejection messages are deliberately terse and never echo secrets.
  */
-public final class Validators {
+public final class Utils {
+    private static final SecureRandom RANDOM = new SecureRandom();
 
-    private Validators() {
+    private Utils() {
     }
 
     /** World key allowlist: no path traversal, no absolute paths, no separators. */
@@ -154,5 +159,45 @@ public final class Validators {
         final String trimmed = command.trim();
         final int end = trimmed.indexOf(' ');
         return (end < 0 ? trimmed : trimmed.substring(0, end)).toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * Constant-time comparison of two byte arrays.
+     */
+    public static boolean constantTimeEquals(final byte[] a, final byte[] b) {
+        return MessageDigest.isEqual(a, b);
+    }
+
+    /**
+     * Constant-time comparison of two strings.
+     */
+    public static boolean constantTimeEquals(final String a, final String b) {
+        if (a == null || b == null) {
+            return false;
+        }
+        return MessageDigest.isEqual(
+                a.getBytes(StandardCharsets.UTF_8),
+                b.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * SHA-256 of the token bytes (UTF-8 of the token string).
+     */
+    public static byte[] sha256(final String token) {
+        try {
+            final MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return digest.digest(token.getBytes(StandardCharsets.UTF_8));
+        } catch (final java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 not available", e);
+        }
+    }
+
+    /**
+     * Generates a fresh 256-bit random token, URL-safe base64 encoded.
+     */
+    public static String generateToken() {
+        final byte[] bytes = new byte[32]; // 256-bit
+        RANDOM.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 }

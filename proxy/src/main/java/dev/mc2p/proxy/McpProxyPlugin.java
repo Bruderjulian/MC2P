@@ -20,7 +20,7 @@ import dev.mc2p.common.http.McpHttpServer;
 import dev.mc2p.common.setup.SetupSupport;
 import dev.mc2p.common.tokens.TokenManager;
 import dev.mc2p.common.tokens.TokenManager.Token;
-import dev.mc2p.common.tokens.Tokens;
+import dev.mc2p.common.validate.Utils;
 import dev.mc2p.proxy.config.ProxyConfig;
 import dev.mc2p.proxy.http.HealthzServlet;
 import dev.mc2p.proxy.rpc.BackendClient;
@@ -229,7 +229,7 @@ public final class McpProxyPlugin {
         if (secret != null) {
             return secret;
         }
-        final String generated = Tokens.generateToken();
+        final String generated = Utils.generateToken();
         try {
             SetupSupport.writeSecretFile(dataDirectory, SetupSupport.PROXY_SECRET_FILE, generated);
         } catch (final java.io.IOException e) {

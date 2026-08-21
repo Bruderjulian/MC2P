@@ -1,18 +1,19 @@
-package dev.mc2p.plugin.facade;
+package dev.mc2p.common.facade;
 
-import dev.mc2p.plugin.facade.model.Model.BlockInfo;
-import dev.mc2p.plugin.facade.model.Model.CommandResult;
-import dev.mc2p.plugin.facade.model.Model.EntityDetails;
-import dev.mc2p.plugin.facade.model.Model.EntityInfo;
-import dev.mc2p.plugin.facade.model.Model.PlayerDetails;
-import dev.mc2p.plugin.facade.model.Model.PlayerInfo;
-import dev.mc2p.plugin.facade.model.Model.PluginInfo;
-import dev.mc2p.plugin.facade.model.Model.StatsInfo;
-import dev.mc2p.plugin.facade.model.Model.Status;
-import dev.mc2p.plugin.facade.model.Model.WorldInfo;
 import java.util.List;
 import java.util.UUID;
 import org.bukkit.Location;
+
+import dev.mc2p.common.facade.Model.BlockInfo;
+import dev.mc2p.common.facade.Model.CommandResult;
+import dev.mc2p.common.facade.Model.EntityDetails;
+import dev.mc2p.common.facade.Model.EntityInfo;
+import dev.mc2p.common.facade.Model.PlayerDetails;
+import dev.mc2p.common.facade.Model.PlayerInfo;
+import dev.mc2p.common.facade.Model.PluginInfo;
+import dev.mc2p.common.facade.Model.StatsInfo;
+import dev.mc2p.common.facade.Model.Status;
+import dev.mc2p.common.facade.Model.WorldInfo;
 
 /**
  * Abstraction over the host server, implemented for Paper. All Bukkit API

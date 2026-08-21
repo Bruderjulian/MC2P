@@ -2,12 +2,13 @@ package dev.mc2p.plugin.tools;
 
 import dev.mc2p.common.exceptions.FacadeException;
 import dev.mc2p.common.exceptions.ToolException;
+import dev.mc2p.common.facade.ServerFacade;
 import dev.mc2p.common.json.Schemas;
 import dev.mc2p.common.validate.Args;
-import dev.mc2p.common.validate.Validators;
+import dev.mc2p.common.validate.Utils;
 import dev.mc2p.plugin.config.BackendConfig;
 import dev.mc2p.plugin.config.BackendConfig.LimitsSection;
-import dev.mc2p.plugin.facade.ServerFacade;
+
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -62,7 +63,7 @@ public final class WriteTools {
                                 (args, auth) -> {
                                         final UUID uuid = Args.requiredUUID(args, "uuid");
                                         final String reason = Args.string(args, "reason", null);
-                                        if (reason != null && !Validators.isSafeReason(reason)) {
+                                        if (reason != null && !Utils.isSafeReason(reason)) {
                                                 throw new ToolException("reason too long (max 256)");
                                         }
                                         facade.kickPlayer(uuid, reason);
@@ -96,7 +97,7 @@ public final class WriteTools {
                                                 facade.teleport(uuid, target);
                                         }
                                         final String worldKey = Args.string(args, "world", null);
-                                        if (worldKey == null || !Validators.isSafeWorldKey(worldKey)
+                                        if (worldKey == null || !Utils.isSafeWorldKey(worldKey)
                                                         || !facade.worldExists(worldKey)) {
                                                 throw new ToolException("world is required and must exist");
                                         }
@@ -112,9 +113,9 @@ public final class WriteTools {
                                         final int x = Args.integer(args, "x", 0);
                                         final int y = Args.integer(args, "y", 0);
                                         final int z = Args.integer(args, "z", 0);
-                                        if (!Validators.isWithinCoordinate(x, max)
-                                                        || !Validators.isWithinCoordinate(y, max)
-                                                        || !Validators.isWithinCoordinate(z, max)) {
+                                        if (!Utils.isWithinCoordinate(x, max)
+                                                        || !Utils.isWithinCoordinate(y, max)
+                                                        || !Utils.isWithinCoordinate(z, max)) {
                                                 throw new ToolException("coordinate out of bounds (±" + max + ")");
                                         }
                                         facade.teleport(uuid, new Location(world, x + 0.5, y, z + 0.5));
@@ -135,7 +136,7 @@ public final class WriteTools {
                                                 List.of("uuid", "gamemode")),
                                 (args, auth) -> {
                                         final UUID uuid = Args.requiredUUID(args, "uuid");
-                                        final String gamemode = Validators
+                                        final String gamemode = Utils
                                                         .normalizeGamemode(Args.requiredString(args, "gamemode"));
                                         if (gamemode == null) {
                                                 throw new ToolException("invalid gamemode");
@@ -164,15 +165,15 @@ public final class WriteTools {
                                 (args, auth) -> {
                                         final UUID uuid = Args.requiredUUID(args, "uuid");
                                         final String effect = Args.requiredString(args, "effect");
-                                        if (!Validators.isSafeEffectName(effect)) {
+                                        if (!Utils.isSafeEffectName(effect)) {
                                                 throw new ToolException("invalid effect name");
                                         }
                                         final int duration = Args.integer(args, "durationSeconds", 60);
-                                        if (!Validators.isWithin(duration, 1, 3600)) {
+                                        if (!Utils.isWithin(duration, 1, 3600)) {
                                                 throw new ToolException("duration must be 1..3600 seconds");
                                         }
                                         final int amplifier = Args.integer(args, "amplifier", 0);
-                                        if (!Validators.isWithin(amplifier, 0, 255)) {
+                                        if (!Utils.isWithin(amplifier, 0, 255)) {
                                                 throw new ToolException("amplifier must be 0..255");
                                         }
                                         facade.applyEffect(uuid, effect, duration, amplifier);
@@ -201,7 +202,7 @@ public final class WriteTools {
                                 (args, auth) -> {
                                         final UUID uuid = Args.requiredUUID(args, "uuid");
                                         final String reason = Args.string(args, "reason", null);
-                                        if (reason != null && !Validators.isSafeReason(reason)) {
+                                        if (reason != null && !Utils.isSafeReason(reason)) {
                                                 throw new ToolException("reason too long (max 256)");
                                         }
                                         facade.ban(uuid, reason);
@@ -291,7 +292,7 @@ public final class WriteTools {
                                                 List.of("world", "x", "y", "z", "material", "confirm")),
                                 (args, auth) -> {
                                         final String world = Args.requiredString(args, "world");
-                                        if (!Validators.isSafeWorldKey(world) || !facade.worldExists(world)) {
+                                        if (!Utils.isSafeWorldKey(world) || !facade.worldExists(world)) {
                                                 throw new ToolException("invalid or unknown world");
                                         }
                                         if (!auth.restrictions().isWorldAllowed(world)) {
@@ -302,13 +303,13 @@ public final class WriteTools {
                                         final int x = Args.integer(args, "x", 0);
                                         final int y = Args.integer(args, "y", 0);
                                         final int z = Args.integer(args, "z", 0);
-                                        if (!Validators.isWithinCoordinate(x, max)
-                                                        || !Validators.isWithinCoordinate(y, max)
-                                                        || !Validators.isWithinCoordinate(z, max)) {
+                                        if (!Utils.isWithinCoordinate(x, max)
+                                                        || !Utils.isWithinCoordinate(y, max)
+                                                        || !Utils.isWithinCoordinate(z, max)) {
                                                 throw new ToolException("coordinate out of bounds (±" + max + ")");
                                         }
                                         final String material = Args.requiredString(args, "material").toLowerCase();
-                                        if (!Validators.isSafeMaterialName(material)) {
+                                        if (!Utils.isSafeMaterialName(material)) {
                                                 throw new ToolException("material is not in the block_set allowlist");
                                         }
                                         facade.setBlock(world, x, y, z, material);
@@ -336,7 +337,7 @@ public final class WriteTools {
                                                                                 + facade.restartStrategyHealth());
                                         }
                                         final int countdown = Args.integer(args, "countdownSeconds", 10);
-                                        if (!Validators.isWithin(countdown, 1, 300)) {
+                                        if (!Utils.isWithin(countdown, 1, 300)) {
                                                 throw new ToolException("countdownSeconds must be 1..300");
                                         }
                                         facade.scheduleRestart(
@@ -363,7 +364,7 @@ public final class WriteTools {
                                                 List.of("confirm")),
                                 (args, auth) -> {
                                         final int countdown = Args.integer(args, "countdownSeconds", 10);
-                                        if (!Validators.isWithin(countdown, 1, 300)) {
+                                        if (!Utils.isWithin(countdown, 1, 300)) {
                                                 throw new ToolException("countdownSeconds must be 1..300");
                                         }
                                         facade.scheduleStop(Args.string(args, "announce",

@@ -1,4 +1,4 @@
-package dev.mc2p.plugin.facade.model;
+package dev.mc2p.common.facade;
 
 import java.util.List;
 import java.util.Map;

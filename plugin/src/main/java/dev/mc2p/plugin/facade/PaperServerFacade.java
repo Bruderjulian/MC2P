@@ -1,18 +1,19 @@
 package dev.mc2p.plugin.facade;
 
 import dev.mc2p.common.exceptions.FacadeException;
-import dev.mc2p.common.validate.Validators;
-import dev.mc2p.plugin.facade.model.Model.BlockInfo;
-import dev.mc2p.plugin.facade.model.Model.CommandResult;
-import dev.mc2p.plugin.facade.model.Model.EntityDetails;
-import dev.mc2p.plugin.facade.model.Model.EntityInfo;
-import dev.mc2p.plugin.facade.model.Model.PlayerDetails;
-import dev.mc2p.plugin.facade.model.Model.PlayerInfo;
-import dev.mc2p.plugin.facade.model.Model.PluginInfo;
-import dev.mc2p.plugin.facade.model.Model.StatsInfo;
-import dev.mc2p.plugin.facade.model.Model.Status;
-import dev.mc2p.plugin.facade.model.Model.Tps;
-import dev.mc2p.plugin.facade.model.Model.WorldInfo;
+import dev.mc2p.common.facade.Model.BlockInfo;
+import dev.mc2p.common.facade.Model.CommandResult;
+import dev.mc2p.common.facade.Model.EntityDetails;
+import dev.mc2p.common.facade.Model.EntityInfo;
+import dev.mc2p.common.facade.Model.PlayerDetails;
+import dev.mc2p.common.facade.Model.PlayerInfo;
+import dev.mc2p.common.facade.Model.PluginInfo;
+import dev.mc2p.common.facade.Model.StatsInfo;
+import dev.mc2p.common.facade.Model.Status;
+import dev.mc2p.common.facade.Model.Tps;
+import dev.mc2p.common.facade.Model.WorldInfo;
+import dev.mc2p.common.facade.ServerFacade;
+import dev.mc2p.common.validate.Utils;
 import dev.mc2p.plugin.thread.MainThread;
 import io.papermc.paper.ban.BanListType;
 import java.time.Instant;
@@ -589,7 +590,7 @@ public final class PaperServerFacade implements ServerFacade {
     // ---- internals ----
 
     private World requireWorld(final String worldKey) {
-        if (!Validators.isSafeWorldKey(worldKey)) {
+        if (!Utils.isSafeWorldKey(worldKey)) {
             throw new FacadeException("invalid world key");
         }
         final World w = Bukkit.getWorld(worldKey);

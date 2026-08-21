@@ -11,7 +11,7 @@ import dev.mc2p.common.json.Json;
 import dev.mc2p.common.json.Schemas;
 import dev.mc2p.common.rpc.AuthContext;
 import dev.mc2p.common.rpc.ToolResult;
-import dev.mc2p.common.validate.Validators;
+import dev.mc2p.common.validate.Utils;
 import dev.mc2p.proxy.rpc.BackendClient;
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.server.McpServerFeatures.SyncToolSpecification;
@@ -216,7 +216,7 @@ public final class RelayTools {
                         return new Route(List.of(server), null);
                 }
                 if (def.playerTool()) {
-                        final UUID uuid = Validators.parseUuid(string(args.get("uuid")));
+                        final UUID uuid = Utils.parseUuid(string(args.get("uuid")));
                         if (uuid == null) {
                                 return new Route(List.of(), "missing required argument 'uuid'");
                         }
@@ -251,7 +251,7 @@ public final class RelayTools {
 
         private static CallToolResult playerLocate(final ProxyServer proxy, final BackendClient client,
                         final Map<String, Object> args) {
-                final UUID uuid = Validators.parseUuid(string(args.get("uuid")));
+                final UUID uuid = Utils.parseUuid(string(args.get("uuid")));
                 if (uuid == null) {
                         return ToolResult.error("missing required argument 'uuid'");
                 }

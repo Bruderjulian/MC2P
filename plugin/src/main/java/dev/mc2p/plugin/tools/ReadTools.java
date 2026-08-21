@@ -1,17 +1,17 @@
 package dev.mc2p.plugin.tools;
 
 import dev.mc2p.common.exceptions.ToolException;
+import dev.mc2p.common.facade.ServerFacade;
 import dev.mc2p.common.json.Schemas;
 import dev.mc2p.common.rpc.AuthContext;
 import dev.mc2p.common.validate.Args;
-import dev.mc2p.common.validate.Validators;
+import dev.mc2p.common.validate.Utils;
 import dev.mc2p.plugin.config.BackendConfig;
 import dev.mc2p.plugin.config.BackendConfig.LimitsSection;
-import dev.mc2p.plugin.facade.ServerFacade;
-import dev.mc2p.plugin.facade.model.Model.BlockInfo;
-import dev.mc2p.plugin.facade.model.Model.EntityInfo;
-import dev.mc2p.plugin.facade.model.Model.PlayerInfo;
-import dev.mc2p.plugin.facade.model.Model.WorldInfo;
+import dev.mc2p.common.facade.Model.BlockInfo;
+import dev.mc2p.common.facade.Model.EntityInfo;
+import dev.mc2p.common.facade.Model.PlayerInfo;
+import dev.mc2p.common.facade.Model.WorldInfo;
 import java.util.List;
 import java.util.Map;
 
@@ -133,7 +133,7 @@ public final class ReadTools {
                     final int y2 = Args.integer(args, "y2", 0);
                     final int z2 = Args.integer(args, "z2", 0);
                     for (final int v : new int[] { x1, y1, z1, x2, y2, z2 }) {
-                        if (!Validators.isWithinCoordinate(v, max)) {
+                        if (!Utils.isWithinCoordinate(v, max)) {
                             throw new ToolException("coordinate out of bounds (±" + max + ")");
                         }
                     }
@@ -180,15 +180,15 @@ public final class ReadTools {
                 (args, auth) -> {
                     final String world = requireWorld(facade, args, auth);
                     final String type = Args.string(args, "type", null);
-                    if (type != null && !type.isBlank() && !Validators.isSafeEntityType(type)) {
+                    if (type != null && !type.isBlank() && !Utils.isSafeEntityType(type)) {
                         throw new ToolException("invalid entity type");
                     }
                     final int limit = Args.integer(args, "limit", limits.maxEntityLimit());
-                    if (!Validators.isValidLimit(limit, limits.maxEntityLimit())) {
+                    if (!Utils.isValidLimit(limit, limits.maxEntityLimit())) {
                         throw new ToolException("limit must be between 1 and " + limits.maxEntityLimit());
                     }
                     final int page = Args.integer(args, "page", 0);
-                    if (!Validators.isValidPage(page, limit)) {
+                    if (!Utils.isValidPage(page, limit)) {
                         throw new ToolException("invalid page");
                     }
                     final List<EntityInfo> entities = facade.entities(world, type, limit, page);
@@ -216,7 +216,7 @@ public final class ReadTools {
             final AuthContext auth)
             throws ToolException {
         final String world = Args.requiredString(args, "world");
-        if (!Validators.isSafeWorldKey(world)) {
+        if (!Utils.isSafeWorldKey(world)) {
             throw new ToolException("invalid world key");
         }
         if (!facade.worldExists(world)) {
@@ -232,9 +232,9 @@ public final class ReadTools {
         final int x = Args.integer(args, "x", 0);
         final int y = Args.integer(args, "y", 0);
         final int z = Args.integer(args, "z", 0);
-        if (!Validators.isWithinCoordinate(x, maxCoord)
-                || !Validators.isWithinCoordinate(y, maxCoord)
-                || !Validators.isWithinCoordinate(z, maxCoord)) {
+        if (!Utils.isWithinCoordinate(x, maxCoord)
+                || !Utils.isWithinCoordinate(y, maxCoord)
+                || !Utils.isWithinCoordinate(z, maxCoord)) {
             throw new ToolException("coordinate out of bounds (±" + maxCoord + ")");
         }
         return new int[] { x, y, z };

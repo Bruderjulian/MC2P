@@ -1,8 +1,8 @@
 package dev.mc2p.plugin.tools;
 
+import dev.mc2p.common.facade.ServerFacade;
 import dev.mc2p.common.http.McpRequestContextExtractor;
 import dev.mc2p.common.rpc.AuthContext;
-import dev.mc2p.plugin.facade.ServerFacade;
 import dev.mc2p.plugin.thread.MainThread;
 import io.modelcontextprotocol.json.McpJsonDefaults;
 import io.modelcontextprotocol.server.McpServer;
