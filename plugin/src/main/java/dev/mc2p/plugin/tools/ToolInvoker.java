@@ -3,6 +3,8 @@ package dev.mc2p.plugin.tools;
 import dev.mc2p.common.audit.AuditLogger;
 import dev.mc2p.common.exceptions.ToolException;
 import dev.mc2p.common.json.Json;
+import dev.mc2p.common.rpc.AuthContext;
+import dev.mc2p.common.rpc.ToolResult;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 import java.util.Map;
 

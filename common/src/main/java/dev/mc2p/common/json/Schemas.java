@@ -1,16 +1,13 @@
-package dev.mc2p.proxy.tools;
+package dev.mc2p.common.json;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Builders for JSON Schema 2020-12 input schemas used by MCP tool definitions.
- */
+/** Builders for JSON Schema 2020-12 input schemas used by MCP tool definitions. */
 public final class Schemas {
 
-    private Schemas() {
-    }
+    private Schemas() {}
 
     public static Map<String, Object> object(final Map<String, Object> properties, final List<String> required) {
         final Map<String, Object> schema = new LinkedHashMap<>();

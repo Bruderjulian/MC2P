@@ -3,6 +3,7 @@ package dev.mc2p.plugin.tools;
 import java.util.Map;
 
 import dev.mc2p.common.exceptions.ToolException;
+import dev.mc2p.common.rpc.AuthContext;
 
 /**
  * Registration metadata for one MCP tool. {@code destructive} tools are audited and fail

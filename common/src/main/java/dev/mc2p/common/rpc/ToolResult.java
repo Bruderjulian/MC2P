@@ -1,4 +1,4 @@
-package dev.mc2p.plugin.tools;
+package dev.mc2p.common.rpc;
 
 import dev.mc2p.common.json.Json;
 import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
